@@ -803,22 +803,6 @@ public class EditKubernetesUniverse extends KubernetesTaskBase {
     return masterAddressesChanged;
   }
 
-  private void validateEditParams(Cluster newCluster, Cluster curCluster) {
-    // Move this logic to UniverseDefinitionTaskBase.
-    String newProviderStr = newCluster.userIntent.provider;
-    String currProviderStr = curCluster.userIntent.provider;
-
-    if (!newProviderStr.equals(currProviderStr)) {
-      String msg =
-          String.format(
-              "Provider can't change during editing of the universe. "
-                  + "Expected provider %s but found %s for cluster type: %s",
-              currProviderStr, newProviderStr, newCluster.clusterType);
-      log.error(msg);
-      throw new IllegalArgumentException(msg);
-    }
-  }
-
   private Set<NodeDetails> filterMastersToAdd(Set<NodeDetails> mastersToAdd, Universe universe) {
     Set<NodeDetails> newMasters = new HashSet<>(mastersToAdd);
     // Filter the copy only on a retry.
