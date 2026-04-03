@@ -45,6 +45,7 @@ yba universe [flags]
 * [yba universe describe](yba_universe_describe.md)	 - Describe a YugabyteDB Anywhere universe
 * [yba universe detach](yba_universe_detach.md)	 - Detach a universe from a YugabyteDB Anywhere
 * [yba universe edit](yba_universe_edit.md)	 - Edit a YugabyteDB Anywhere universe
+* [yba universe file-collection](yba_universe_file-collection.md)	 - Collect, download, and delete diagnostic files from DB nodes
 * [yba universe list](yba_universe_list.md)	 - List YugabyteDB Anywhere universes
 * [yba universe node](yba_universe_node.md)	 - Manage YugabyteDB Anywhere universe nodes
 * [yba universe pause](yba_universe_pause.md)	 - Pause a YugabyteDB Anywhere universe

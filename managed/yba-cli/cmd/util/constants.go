@@ -420,6 +420,8 @@ const (
 	PITROperation = "PITR"
 	// SupportBundleOperation type
 	SupportBundleOperation = "SupportBundle"
+	// FileCollectionOperation type
+	FileCollectionOperation = "FileCollection"
 )
 
 // Different resource types that are supported in CLI
