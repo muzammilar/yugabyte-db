@@ -44,6 +44,7 @@
 #include "yb/client/universe_key_client.h"
 
 #include "yb/common/common_flags.h"
+#include "yb/common/entity_ids.h"
 #include "yb/common/common_util.h"
 #include "yb/common/pg_catversions.h"
 #include "yb/common/schema.h"
@@ -262,6 +263,7 @@ DEFINE_RUNTIME_int32(
 TAG_FLAG(min_invalidation_message_retention_time_secs, advanced);
 
 DECLARE_bool(enable_qos);
+DECLARE_bool(qos_system_dbs_use_shared_pool);
 DECLARE_bool(ysql_enable_auto_analyze_infra);
 DECLARE_int32(update_min_cdc_indices_interval_secs);
 DECLARE_uint64(ysql_lease_refresher_rpc_timeout_ms);
@@ -2200,7 +2202,11 @@ Cgroup* TabletServer::PerDbCgroupProvider(rpc::ThreadPoolTag tag) {
                 << tag;
     return nullptr;
   }
-  auto cgroup_result = cgroup_manager_->CgroupForDb(static_cast<PgOid>(tag));
+  auto db_oid = static_cast<PgOid>(tag);
+  if (FLAGS_qos_system_dbs_use_shared_pool && IsQosSystemDatabaseOid(db_oid)) {
+    return nullptr;
+  }
+  auto cgroup_result = cgroup_manager_->CgroupForDb(db_oid);
   if (!cgroup_result.ok()) {
     LOG(DFATAL) << "failed to get cgroup for database " << tag << ": "
                 << cgroup_result.status();
