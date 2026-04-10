@@ -242,7 +242,7 @@ PerformAuthentication(Port *port)
 												  "Postmaster",
 												  ALLOCSET_DEFAULT_SIZES);
 
-	if (!load_hba())
+	if (!load_hba(NULL /* yb_validate_conf_file */ ))
 	{
 		/*
 		 * It makes no sense to continue if we fail to load the HBA file,
@@ -252,7 +252,7 @@ PerformAuthentication(Port *port)
 				(errmsg("could not load pg_hba.conf")));
 	}
 
-	if (!load_ident(NULL /* yb_ident_context */ ))
+	if (!load_ident(NULL, NULL /* yb_validate_conf_file */ ))
 	{
 		/*
 		 * It is ok to continue if we fail to load the IDENT file, although it

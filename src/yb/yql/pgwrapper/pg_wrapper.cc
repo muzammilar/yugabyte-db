@@ -16,6 +16,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
+#include <cstdio>
 #include <fstream>
 #include <random>
 #include <regex>
@@ -40,7 +41,9 @@
 #include "yb/util/debug/sanitizer_scopes.h"
 #include "yb/util/cgroups.h"
 #include "yb/util/csv_util.h"
+#include "yb/util/env.h"
 #include "yb/util/env_util.h"
+#include "yb/util/monotime.h"
 #include "yb/util/errno.h"
 #include "yb/util/flags.h"
 #include "yb/util/flags/flags_callback.h"
@@ -60,6 +63,7 @@
 #include "yb/util/thread.h"
 #include "yb/util/to_stream.h"
 
+#include "yb/yql/pgwrapper/libpq_utils.h"
 #include "yb/yql/ysql_conn_mgr_wrapper/ysql_conn_mgr_stats.h"
 
 #include "ybgate/ybgate_api.h"
@@ -492,6 +496,11 @@ using namespace std::literals;  // NOLINT
 namespace yb {
 namespace pgwrapper {
 
+constexpr auto kDefaultPgConfFileName = "postgresql.conf";
+constexpr auto kYsqlPgConfFileName = "ysql_pg.conf";
+constexpr auto kYsqlHbaConfFileName = "ysql_hba.conf";
+constexpr auto kYsqlIdentConfFileName = "ysql_ident.conf";
+
 string FormatPgGFlagValue(const string& value, const string& type) {
   if (type == "string") {
     auto trimmed = boost::algorithm::trim_copy(value);
@@ -616,14 +625,6 @@ bool ValidateConfCsv(const char* flag_name, const std::string& value) {
   return true;
 }
 
-// Perform basic validation of the postgres parameter values. Postgres validates this via
-// `ParseConfigFp` function in `guc-file.c` using a lexer, which is very complicated to mimic
-// using a regex.
-DEFINE_validator(ysql_pg_conf_csv, &ValidateConfCsv);
-
-DEFINE_validator(ysql_hba_conf_csv, &ValidateConfCsv);
-DEFINE_validator(ysql_ident_conf_csv, &ValidateConfCsv);
-
 static bool ValidateDocumentDB(const char* flag_name, bool value) {
 #ifndef YB_ENABLE_YSQL_DOCUMENTDB_EXT
   if (value) {
@@ -696,9 +697,9 @@ HostPort GetPgHostPort(const PgProcessConf& conf) {
 
 }  // namespace
 
-Result<string> WritePostgresConfig(const PgProcessConf& conf) {
+Result<string> WritePostgresConfig(const PgProcessConf& conf, const string& ysql_pg_conf_csv) {
   // First add default configuration created by local initdb.
-  string default_conf_path = JoinPathSegments(conf.data_dir, "postgresql.conf");
+  string default_conf_path = JoinPathSegments(conf.data_dir, kDefaultPgConfFileName);
   std::ifstream conf_file;
   conf_file.open(default_conf_path, std::ios_base::in);
   if (!conf_file) {
@@ -746,8 +747,8 @@ Result<string> WritePostgresConfig(const PgProcessConf& conf) {
   conf_file.close();
 
   vector<string> user_configs;
-  if (!FLAGS_ysql_pg_conf_csv.empty()) {
-    RETURN_NOT_OK(ReadCSVValues(FLAGS_ysql_pg_conf_csv, &user_configs));
+  if (!ysql_pg_conf_csv.empty()) {
+    RETURN_NOT_OK(ReadCSVValues(ysql_pg_conf_csv, &user_configs));
   } else if (!FLAGS_ysql_pg_conf.empty()) {
     ReadCommaSeparatedValues(FLAGS_ysql_pg_conf, &user_configs);
   }
@@ -792,18 +793,18 @@ Result<string> WritePostgresConfig(const PgProcessConf& conf) {
   // via the gFlag to take precedence.
   AppendPgGFlags(&lines);
 
-  string conf_path = JoinPathSegments(conf.data_dir, "ysql_pg.conf");
+  string conf_path = JoinPathSegments(conf.data_dir, kYsqlPgConfFileName);
   RETURN_NOT_OK(WriteConfigFile(conf_path, lines));
   return "config_file=" + conf_path;
 }
 
-Result<string> WritePgHbaConfig(const PgProcessConf& conf) {
+Result<string> WritePgHbaConfig(const PgProcessConf& conf, const string& hba_conf_csv) {
   vector<string> lines;
 
   // Add the user-defined custom configuration lines if any.
   // Put this first so that it can be used to override the auto-generated config below.
-  if (!FLAGS_ysql_hba_conf_csv.empty()) {
-    RETURN_NOT_OK(ReadCSVValues(FLAGS_ysql_hba_conf_csv, &lines));
+  if (!hba_conf_csv.empty()) {
+    RETURN_NOT_OK(ReadCSVValues(hba_conf_csv, &lines));
   } else if (!FLAGS_ysql_hba_conf.empty()) {
     ReadCommaSeparatedValues(FLAGS_ysql_hba_conf, &lines);
   }
@@ -837,17 +838,17 @@ Result<string> WritePgHbaConfig(const PgProcessConf& conf) {
       "# local all postgres yb-tserver-key",
   });
 
-  const auto conf_path = JoinPathSegments(conf.data_dir, "ysql_hba.conf");
+  const auto conf_path = JoinPathSegments(conf.data_dir, kYsqlHbaConfFileName);
   RETURN_NOT_OK(WriteConfigFile(conf_path, lines));
   return "hba_file=" + conf_path;
 }
 
-Result<string> WritePgIdentConfig(const PgProcessConf& conf) {
+Result<string> WritePgIdentConfig(const PgProcessConf& conf, const string& ident_conf_csv) {
   vector<string> lines;
 
   // Add the user-defined custom configuration lines if any.
-  if (!FLAGS_ysql_ident_conf_csv.empty()) {
-    RETURN_NOT_OK(ReadCSVValues(FLAGS_ysql_ident_conf_csv, &lines));
+  if (!ident_conf_csv.empty()) {
+    RETURN_NOT_OK(ReadCSVValues(ident_conf_csv, &lines));
   }
 
   if (lines.empty()) {
@@ -859,7 +860,7 @@ Result<string> WritePgIdentConfig(const PgProcessConf& conf) {
       "# MAPNAME IDP-USERNAME YB-USERNAME"
   });
 
-  const auto conf_path = JoinPathSegments(conf.data_dir, "ysql_ident.conf");
+  const auto conf_path = JoinPathSegments(conf.data_dir, kYsqlIdentConfFileName);
   RETURN_NOT_OK(WriteConfigFile(conf_path, lines));
   return "ident_file=" + conf_path;
 }
@@ -867,18 +868,27 @@ Result<string> WritePgIdentConfig(const PgProcessConf& conf) {
 Result<vector<string>> WritePgConfigFiles(const PgProcessConf& conf) {
   vector<string> args;
   args.push_back("-c");
-  args.push_back(VERIFY_RESULT_PREPEND(WritePostgresConfig(conf),
+  args.push_back(VERIFY_RESULT_PREPEND(
+      WritePostgresConfig(conf, FLAGS_ysql_pg_conf_csv),
       "Failed to write ysql pg configuration: "));
   args.push_back("-c");
-  args.push_back(VERIFY_RESULT_PREPEND(WritePgHbaConfig(conf),
-      "Failed to write ysql hba configuration: "));
+  args.push_back(VERIFY_RESULT_PREPEND(
+      WritePgHbaConfig(conf, FLAGS_ysql_hba_conf_csv), "Failed to write ysql hba configuration: "));
   args.push_back("-c");
-  args.push_back(VERIFY_RESULT_PREPEND(WritePgIdentConfig(conf),
+  args.push_back(VERIFY_RESULT_PREPEND(
+      WritePgIdentConfig(conf, FLAGS_ysql_ident_conf_csv),
       "Failed to write ysql ident configuration: "));
   return args;
 }
 
 }  // namespace
+
+// Basic gflag validators -- only CSV/newline validation.
+// Extended PG-connection-based validation is done via TabletServer::ExtendedFlagValidation,
+// called from GenericServiceImpl::ValidateFlagValue.
+DEFINE_validator(ysql_pg_conf_csv, &ValidateConfCsv);
+DEFINE_validator(ysql_hba_conf_csv, &ValidateConfCsv);
+DEFINE_validator(ysql_ident_conf_csv, &ValidateConfCsv);
 
 string GetPostgresInstallRoot() {
   return JoinPathSegments(yb::env_util::GetRootDir("postgres"), "postgres");
@@ -1076,9 +1086,9 @@ Status PgWrapper::ReloadConfig() {
 }
 
 Status PgWrapper::UpdateAndReloadConfig() {
-  RETURN_NOT_OK(WritePostgresConfig(conf_));
-  RETURN_NOT_OK(WritePgHbaConfig(conf_));
-  RETURN_NOT_OK(WritePgIdentConfig(conf_));
+  RETURN_NOT_OK(WritePostgresConfig(conf_, FLAGS_ysql_pg_conf_csv));
+  RETURN_NOT_OK(WritePgHbaConfig(conf_, FLAGS_ysql_hba_conf_csv));
+  RETURN_NOT_OK(WritePgIdentConfig(conf_, FLAGS_ysql_ident_conf_csv));
   return ReloadConfig();
 }
 
@@ -1146,11 +1156,16 @@ Status PgWrapper::RunPgUpgrade(const PgUpgradeParams& param) {
 
   std::vector<std::string> args{
       program_path,
-      "--new-datadir", param.data_dir,
-      "--username", param.ysql_user_name,
-      "--new-socketdir", param.new_version_socket_dir,
-      "--new-port", ToString(param.new_version_pg_port),
-      "--old-port", ToString(param.old_version_pg_port)};
+      "--new-datadir",
+      param.data_dir,
+      "--username",
+      param.ysql_user_name,
+      "--new-socketdir",
+      param.new_version_socket_dir,
+      "--new-port",
+      ::yb::ToString(param.new_version_pg_port),
+      "--old-port",
+      ::yb::ToString(param.old_version_pg_port)};
 
   if (!param.old_version_socket_dir.empty()) {
     args.push_back("--old-socketdir");
@@ -1521,6 +1536,13 @@ PgSupervisor::PgSupervisor(PgProcessConf conf, PgWrapperContext* server)
     server_->RegisterCertificateReloader(std::bind(&PgSupervisor::ReloadConfig, this));
     server_->RegisterPgProcessRestarter(std::bind(&PgSupervisor::Restart, this));
     server_->RegisterPgProcessKiller(std::bind(&PgSupervisor::Pause, this));
+    server_->RegisterPgConfigGenerator(
+        [this](
+            const std::string& tmp_dir, const std::string& ysql_pg_conf_csv,
+            const std::string& hba_conf_csv,
+            const std::string& ident_conf_csv) -> Result<PgConfigPaths> {
+          return WritePgConfigFiles(tmp_dir, ysql_pg_conf_csv, hba_conf_csv, ident_conf_csv);
+        });
   }
 }
 
@@ -1620,6 +1642,36 @@ std::shared_ptr<ProcessWrapper> PgSupervisor::CreateProcessWrapper() {
     pgwrapper->PrepareSharedMemoryNegotiation(server_);
   }
   return pgwrapper;
+}
+
+Result<PgConfigPaths> PgSupervisor::WritePgConfigFiles(
+    const std::string& tmp_dir, const std::string& ysql_pg_conf_csv,
+    const std::string& hba_conf_csv, const std::string& ident_conf_csv) {
+  // Copy postgresql.conf from the real data_dir so WritePostgresConfig can read it.
+  RETURN_NOT_OK(env_util::CopyFile(
+      Env::Default(), JoinPathSegments(conf_.data_dir, kDefaultPgConfFileName),
+      JoinPathSegments(tmp_dir, kDefaultPgConfFileName), WritableFileOptions()));
+
+  PgProcessConf tmp_conf;
+  tmp_conf.data_dir = tmp_dir;
+
+  RETURN_NOT_OK_PREPEND(
+      ResultToStatus(WritePostgresConfig(tmp_conf, ysql_pg_conf_csv)),
+      "Failed to write temp GUC config for validation");
+
+  RETURN_NOT_OK_PREPEND(
+      ResultToStatus(WritePgHbaConfig(tmp_conf, hba_conf_csv)),
+      "Failed to write temp HBA config for validation");
+
+  RETURN_NOT_OK_PREPEND(
+      ResultToStatus(WritePgIdentConfig(tmp_conf, ident_conf_csv)),
+      "Failed to write temp ident config for validation");
+
+  return PgConfigPaths{
+      .hba_conf_path = JoinPathSegments(tmp_dir, kYsqlHbaConfFileName),
+      .guc_conf_path = JoinPathSegments(tmp_dir, kYsqlPgConfFileName),
+      .ident_conf_path = JoinPathSegments(tmp_dir, kYsqlIdentConfFileName),
+  };
 }
 
 void PgSupervisor::PrepareForStop() {

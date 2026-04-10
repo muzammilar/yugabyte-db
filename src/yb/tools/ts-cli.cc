@@ -151,6 +151,11 @@ DEFINE_NON_RUNTIME_bool(force, false, "set_flag: If true, allows command to set 
     "TOMBSTONED.");
 
 DEFINE_NON_RUNTIME_bool(
+    flag_validate, true,
+    "set_flag: If true (default), validates the flag value "
+    "before setting it. Use --novalidate to skip validation and force the change.");
+
+DEFINE_NON_RUNTIME_bool(
     remove_corrupt_data_blocks_unsafe, false,
     "UNSAFE: If true, allows command to remove corrupt data blocks if found. This will result in "
     "data loss. Use with extra care only when/while no other options are available.");
@@ -433,10 +438,18 @@ Status TsAdminClient::ValidateFlagValue(const std::string& flag, const std::stri
   RpcController rpc;
 
   rpc.set_timeout(timeout_);
-  req.set_flag_name(flag);
-  req.set_flag_value(val);
+  auto* flag_pb = req.add_flags();
+  flag_pb->set_name(flag);
+  flag_pb->set_value(val);
 
-  return generic_proxy_->ValidateFlagValue(req, &resp, &rpc);
+  RETURN_NOT_OK(generic_proxy_->ValidateFlagValue(req, &resp, &rpc));
+  if (resp.errors_size() > 0) {
+    const auto& first_error = *resp.errors().begin();
+    return STATUS_FORMAT(
+        InvalidArgument, "Flag validation failed for '$0': $1", first_error.first,
+        first_error.second);
+  }
+  return Status::OK();
 }
 
 Status TsAdminClient::RefreshFlags() {
@@ -873,7 +886,7 @@ void SetUsage(const char* argv0) {
       << "  " << kListTabletsOp << "\n"
       << "  " << kAreTabletsRunningOp << "\n"
       << "  " << kIsServerReadyOp << "\n"
-      << "  " << kSetFlagOp << " [-force] <flag> <value>\n"
+      << "  " << kSetFlagOp << " [-force] [-novalidate] <flag> <value>\n"
       << "  " << kValidateFlagValueOp << " <flag> <value>\n"
       << "  " << kRefreshFlagsOp << "\n"
       << "  " << kTabletStateOp << " <tablet_id>\n"
@@ -1011,6 +1024,16 @@ static int TsCliMain(int argc, char** argv) {
     }
   } else if (op == kSetFlagOp) {
     CHECK_ARGC_OR_RETURN_WITH_USAGE(op, 4);
+
+    if (FLAGS_flag_validate) {
+      auto s = client.ValidateFlagValue(argv[2], argv[3]);
+      if (!s.ok()) {
+        std::cerr << "Flag not set, validation failed: " << s.message().ToBuffer() << std::endl;
+        std::cerr << "Use --flag_validate=false to skip validation and set the flag anyway."
+                  << std::endl;
+        return 1;
+      }
+    }
 
     RETURN_NOT_OK_PREPEND_FROM_MAIN(client.SetFlag(argv[2], argv[3], FLAGS_force),
                                     "Unable to set flag");

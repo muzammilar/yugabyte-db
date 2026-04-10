@@ -109,6 +109,8 @@
 #include "yb/util/ntp_clock.h"
 #include "yb/util/pg_util.h"
 #include "yb/util/random_util.h"
+#include "yb/util/env.h"
+#include "yb/util/path_util.h"
 #include "yb/util/scope_exit.h"
 #include "yb/util/size_literals.h"
 #include "yb/util/status.h"
@@ -267,8 +269,16 @@ DECLARE_bool(enable_qos);
 DECLARE_bool(ysql_enable_auto_analyze_infra);
 DECLARE_int32(update_min_cdc_indices_interval_secs);
 DECLARE_uint64(ysql_lease_refresher_rpc_timeout_ms);
+DECLARE_string(ysql_pg_conf_csv);
+DECLARE_string(ysql_hba_conf_csv);
+DECLARE_string(ysql_ident_conf_csv);
+DECLARE_string(tmp_dir);
 
 namespace yb::tserver {
+
+constexpr auto kYsqlPgConfCsvFlag = "ysql_pg_conf_csv";
+constexpr auto kYsqlHbaConfCsvFlag = "ysql_hba_conf_csv";
+constexpr auto kYsqlIdentConfCsvFlag = "ysql_ident_conf_csv";
 
 namespace {
 
@@ -618,6 +628,91 @@ Result<std::unordered_set<std::string>> TabletServer::GetAvailableAutoFlagsForSe
 
 uint32_t TabletServer::GetAutoFlagConfigVersion() const {
   return auto_flags_manager_->GetConfigVersion();
+}
+
+std::map<std::string, std::string> TabletServer::ExtendedFlagValidation(
+    const std::map<std::string, std::string>& flags_to_validate, CoarseTimePoint deadline) {
+  std::map<std::string, std::string> conf_flags;
+  for (const auto& [flag_name, value] : flags_to_validate) {
+    if (flag_name == kYsqlPgConfCsvFlag || flag_name == kYsqlHbaConfCsvFlag ||
+        flag_name == kYsqlIdentConfCsvFlag) {
+      conf_flags[flag_name] = value;
+    }
+  }
+  if (!conf_flags.empty()) {
+    return ValidateConfCsvViaPg(conf_flags, deadline);
+  }
+  return {};
+}
+
+std::map<std::string, std::string> TabletServer::ValidateConfCsvViaPg(
+    const std::map<std::string, std::string>& conf_flags, CoarseTimePoint deadline) {
+  std::map<std::string, std::string> errors;
+  if (!pg_config_generator_) {
+    return errors;
+  }
+
+  auto start_time = MonoTime::Now();
+
+  // Generate expected postgres conf files from gflags
+  auto it = conf_flags.find(kYsqlPgConfCsvFlag);
+  const std::string& ysql_pg_conf_csv =
+      it != conf_flags.end() ? it->second : FLAGS_ysql_pg_conf_csv;
+  it = conf_flags.find(kYsqlHbaConfCsvFlag);
+  const std::string& hba_conf_csv = it != conf_flags.end() ? it->second : FLAGS_ysql_hba_conf_csv;
+  it = conf_flags.find(kYsqlIdentConfCsvFlag);
+  const std::string& ident_conf_csv =
+      it != conf_flags.end() ? it->second : FLAGS_ysql_ident_conf_csv;
+
+  auto fail_all = [&](const Status& status) {
+    for (const auto& [flag_name, _] : conf_flags) {
+      errors[flag_name] = status.CloneAndPrepend("Could not run validation").ToString();
+    }
+    return errors;
+  };
+
+  auto tmp_dir =
+      JoinPathSegments(FLAGS_tmp_dir, Format("yb_conf_validate_$0", Uuid::Generate()));
+  auto s = Env::Default()->CreateDir(tmp_dir);
+  if (!s.ok()) return fail_all(s);
+
+  auto cleanup = ScopeExit([&tmp_dir] {
+    auto s = Env::Default()->DeleteRecursively(tmp_dir);
+    WARN_NOT_OK(s, "Failed to clean up temp validation dir: " + tmp_dir);
+  });
+
+  auto paths_result = pg_config_generator_(tmp_dir, ysql_pg_conf_csv, hba_conf_csv, ident_conf_csv);
+  if (!paths_result.ok()) return fail_all(paths_result.status());
+  auto paths = std::move(*paths_result);
+
+  auto conn_result = CreateInternalPGConn("yugabyte", /*simple_query_protocol=*/false, deadline);
+  if (!conn_result.ok()) return fail_all(conn_result.status());
+  auto conn = std::move(*conn_result);
+
+  using OptStr = std::optional<std::string>;
+  auto result = (conn.FetchRow<OptStr, OptStr, OptStr>(Format(
+      "SELECT * FROM yb_pg_validate_conf_file($0, $1, $2)",
+      pgwrapper::PqEscapeLiteral(paths.hba_conf_path),
+      pgwrapper::PqEscapeLiteral(paths.guc_conf_path),
+      pgwrapper::PqEscapeLiteral(paths.ident_conf_path))));
+  if (!result.ok()) return fail_all(result.status());
+  const auto& [hba_error, guc_error, ident_error] = *result;
+
+  if (guc_error.has_value() && conf_flags.count(kYsqlPgConfCsvFlag)) {
+    errors[kYsqlPgConfCsvFlag] = *guc_error;
+  }
+  if (hba_error.has_value() && conf_flags.count(kYsqlHbaConfCsvFlag)) {
+    errors[kYsqlHbaConfCsvFlag] = *hba_error;
+  }
+  if (ident_error.has_value() && conf_flags.count(kYsqlIdentConfCsvFlag)) {
+    errors[kYsqlIdentConfCsvFlag] = *ident_error;
+  }
+
+  auto elapsed = MonoTime::Now() - start_time;
+  VLOG(1) << "Validated all PG conf files (guc, hba, ident) in " << elapsed
+          << " errors : " << yb::ToString(errors);
+
+  return errors;
 }
 
 Result<std::unordered_set<std::string>> TabletServer::GetFlagsForServer() const {
@@ -2355,6 +2450,10 @@ void TabletServer::RegisterPgProcessRestarter(std::function<Status(void)> restar
 
 void TabletServer::RegisterPgProcessKiller(std::function<Status(void)> killer) {
   pg_killer_ = std::move(killer);
+}
+
+void TabletServer::RegisterPgConfigGenerator(pgwrapper::PgConfigGenerator generator) {
+  pg_config_generator_ = std::move(generator);
 }
 
 void TabletServer::RegisterConnectionManagerRestarter(std::function<Status(void)> restarter) {
