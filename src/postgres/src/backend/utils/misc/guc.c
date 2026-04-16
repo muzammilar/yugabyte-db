@@ -2761,6 +2761,18 @@ static struct config_bool ConfigureNamesBool[] =
 	},
 
 	{
+		{"yb_cdcsdk_allow_dml_without_pk", PGC_SUSET, DEVELOPER_OPTIONS,
+			gettext_noop("When set to true, allows UPDATE/DELETE on tables under a publication "
+						 "with REPLICA IDENTITY DEFAULT or CHANGE that do not have a primary key."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&yb_cdcsdk_allow_dml_without_pk,
+		false,
+		NULL, NULL, NULL
+	},
+
+	{
 		{"ysql_upgrade_mode", PGC_SUSET, DEVELOPER_OPTIONS,
 			gettext_noop("Enter a special mode designed specifically for YSQL cluster upgrades. "
 						 "Allows creating new system tables with given relation and type OID. "

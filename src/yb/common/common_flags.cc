@@ -252,6 +252,10 @@ DEFINE_RUNTIME_PG_PREVIEW_FLAG(bool, yb_cdcsdk_stream_tables_without_primary_key
     "When set to true, allows streaming of tables without primary keys for CDCSDK logical "
     "replication streams.");
 
+DEFINE_RUNTIME_PG_PREVIEW_FLAG(bool, yb_cdcsdk_allow_dml_without_pk, false,
+    "When set to true, allows UPDATE/DELETE on tables under a publication with "
+    "REPLICA IDENTITY DEFAULT or CHANGE that do not have a primary key.");
+
 namespace {
 
 constexpr const auto kMinRpcThrottleThresholdBytes = 16;
