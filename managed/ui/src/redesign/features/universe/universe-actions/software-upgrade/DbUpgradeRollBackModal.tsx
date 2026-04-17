@@ -213,9 +213,12 @@ export const DbUpgradeRollBackModal = ({
   const classes = useStyles();
   const queryClient = useQueryClient();
 
-  const universeDetailsQuery = useQuery(universeQueryKey.detailsV2(universeUuid), () =>
-    getUniverse(universeUuid),
-    { enabled: !!universeUuid }
+  const isModalOpen = !!modalProps.open;
+
+  const universeDetailsQuery = useQuery(
+    universeQueryKey.detailsV2(universeUuid),
+    () => getUniverse(universeUuid),
+    { enabled: isModalOpen && !!universeUuid }
   );
   const getPagedSoftwareUpgradeTasksRequest = {
     direction: SortDirection.DESC,
@@ -227,7 +230,7 @@ export const DbUpgradeRollBackModal = ({
   const softwareUpgradeTasksQuery = useQuery(
     taskQueryKey.paged(getPagedSoftwareUpgradeTasksRequest),
     () => api.fetchPagedCustomerTasks(getPagedSoftwareUpgradeTasksRequest),
-    { enabled: !!universeUuid }
+    { enabled: isModalOpen && !!universeUuid }
   );
   const latestSoftwareUpgradeTask = softwareUpgradeTasksQuery.data?.entities[0];
 
@@ -241,7 +244,7 @@ export const DbUpgradeRollBackModal = ({
   );
 
   const upgradedAzs =
-    latestSoftwareUpgradeTask?.canaryUpgradeProgress?.tserverAZUpgradeStatesList
+    latestSoftwareUpgradeTask?.softwareUpgradeProgress?.tserverAZUpgradeStatesList
       ?.filter((az) => az.status === AZUpgradeStatus.COMPLETED)
       .map((az) => ({
         azUuid: az.azUUID,

@@ -2,7 +2,7 @@ import {
   AZUpgradeState,
   AZUpgradeStatus,
   CanaryPauseState,
-  CanaryUpgradeProgress,
+  SoftwareUpgradeProgress,
   DbUpgradePrecheckStatus,
   ServerType,
   Task,
@@ -10,6 +10,7 @@ import {
   TaskType,
   TargetType
 } from '@app/redesign/features/tasks/dtos';
+import type { UniverseSoftwareUpgradePrecheckResp } from '@app/v2/api/yugabyteDBAnywhereV2APIs.schemas';
 
 const TASK_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
 export const DB_UPGRADE_TASK_MOCK_UNIVERSE_UUID = 'mock-universe-uuid';
@@ -33,23 +34,23 @@ export const createDbUpgradeMockAzUpgradeState = (
 });
 
 /**
- * Minimal canary progress for unit tests (valid {@link CanaryUpgradeProgress} without assertions).
+ * Minimal software upgrade progress for unit tests (valid {@link SoftwareUpgradeProgress} without assertions).
  * Spread `partial` to override fields.
  */
-export const createMinimalCanaryUpgradeProgressForTests = (
-  partial: Partial<CanaryUpgradeProgress> = {}
-): CanaryUpgradeProgress => ({
-  enabled: true,
-  pauseState: CanaryPauseState.NOT_PAUSED,
+export const createMinimalSoftwareUpgradeProgressForTests = (
+  partial: Partial<SoftwareUpgradeProgress> = {}
+): SoftwareUpgradeProgress => ({
+  canaryUpgrade: true,
+  canaryPauseState: CanaryPauseState.NOT_PAUSED,
   precheckStatus: DbUpgradePrecheckStatus.RUNNING,
   masterAZUpgradeStatesList: [],
   tserverAZUpgradeStatesList: [],
   ...partial
 });
 
-export const defaultDbUpgradeCanaryProgress = (): CanaryUpgradeProgress => ({
-  enabled: true,
-  pauseState: CanaryPauseState.NOT_PAUSED,
+export const defaultDbUpgradeSoftwareUpgradeProgress = (): SoftwareUpgradeProgress => ({
+  canaryUpgrade: true,
+  canaryPauseState: CanaryPauseState.NOT_PAUSED,
   precheckStatus: DbUpgradePrecheckStatus.RUNNING,
   masterAZUpgradeStatesList: [
     createDbUpgradeMockAzUpgradeState(
@@ -99,8 +100,32 @@ export const defaultDbUpgradeCanaryProgress = (): CanaryUpgradeProgress => ({
   ]
 });
 
-type CreateDbUpgradeTaskMockOverrides = Partial<Omit<Task, 'canaryUpgradeProgress'>> & {
-  canaryUpgradeProgress?: Partial<CanaryUpgradeProgress>;
+/**
+ * Returns tserver AZ rows with the second-to-last AZ in progress and the last not started
+ * (earlier AZs completed). Used in Storybook and tests to exercise the full AZ upgrade span.
+ */
+export const tserverAzUpgradeStatesListWithSecondLastInProgress = <
+  T extends { status: AZUpgradeStatus }
+>(
+  tserverAZUpgradeStatesList: T[]
+): T[] => {
+  const tserverCount = tserverAZUpgradeStatesList.length;
+  return tserverAZUpgradeStatesList.map((az, index) => {
+    if (tserverCount === 1) {
+      return { ...az, status: AZUpgradeStatus.IN_PROGRESS };
+    }
+    if (index < tserverCount - 2) {
+      return { ...az, status: AZUpgradeStatus.COMPLETED };
+    }
+    if (index === tserverCount - 2) {
+      return { ...az, status: AZUpgradeStatus.IN_PROGRESS };
+    }
+    return { ...az, status: AZUpgradeStatus.NOT_STARTED };
+  });
+};
+
+type CreateDbUpgradeTaskMockOverrides = Partial<Omit<Task, 'softwareUpgradeProgress'>> & {
+  softwareUpgradeProgress?: Partial<SoftwareUpgradeProgress>;
 };
 
 const buildBaseDbUpgradeTask = (): Task => ({
@@ -196,20 +221,29 @@ const buildBaseDbUpgradeTask = (): Task => ({
   taskInfo: {
     taskParams: {}
   },
-  canaryUpgradeProgress: defaultDbUpgradeCanaryProgress()
+  softwareUpgradeProgress: defaultDbUpgradeSoftwareUpgradeProgress()
 });
 
 export const createDbUpgradeTaskMock = (overrides: CreateDbUpgradeTaskMockOverrides = {}): Task => {
   const base = buildBaseDbUpgradeTask();
-  const { canaryUpgradeProgress: canaryPartial, ...taskPartial } = overrides;
+  const { softwareUpgradeProgress: progressPartial, ...taskPartial } = overrides;
   return {
     ...base,
     ...taskPartial,
-    canaryUpgradeProgress: {
-      ...base.canaryUpgradeProgress!,
-      ...canaryPartial
+    softwareUpgradeProgress: {
+      ...base.softwareUpgradeProgress!,
+      ...progressPartial
     }
   };
 };
 
-export const generateDbUpgradeTaskMockResponse = (): Task => createDbUpgradeTaskMock();
+/**
+ * Mock body for `POST .../upgrade/software/precheck`
+ */
+export const createDbUpgradePrecheckMetadataMock = (
+  overrides: Partial<UniverseSoftwareUpgradePrecheckResp> = {}
+): UniverseSoftwareUpgradePrecheckResp => ({
+  finalize_required: false,
+  ysql_major_version_upgrade: false,
+  ...overrides
+});

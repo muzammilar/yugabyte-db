@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { http, HttpResponse } from 'msw';
 
+import { dbUpgradeManagementPanelMswHandlers } from '@app/mocks/mock-data/dbUpgradeManagementPanelMswHandlers';
 import {
+  createDbUpgradePrecheckMetadataMock,
   createDbUpgradeTaskMock,
-  defaultDbUpgradeCanaryProgress
+  defaultDbUpgradeSoftwareUpgradeProgress,
+  tserverAzUpgradeStatesListWithSecondLastInProgress
 } from '@app/mocks/mock-data/taskMocks';
 import { generateUniverseMockResponse } from '@app/mocks/mock-data/universeMocks';
 import {
@@ -13,8 +15,7 @@ import {
   TaskState,
   type Task
 } from '@app/redesign/features/tasks/dtos';
-import type { GetPagedCustomerTaskResponse } from '@app/redesign/helpers/api';
-import type { Universe } from '@app/v2/api/yugabyteDBAnywhereV2APIs.schemas';
+import type { UniverseSoftwareUpgradePrecheckResp } from '@app/v2/api/yugabyteDBAnywhereV2APIs.schemas';
 
 import { DbUpgradeManagementSidePanel } from './DbUpgradeManagementSidePanel';
 
@@ -22,63 +23,7 @@ const mockUniverse = generateUniverseMockResponse();
 
 const UNIVERSE_UUID = mockUniverse.info?.universe_uuid ?? 'mock-universe-uuid';
 
-const defaultCanary = defaultDbUpgradeCanaryProgress();
-
-/**
- * Returns a list of AZUpgradeStates with the second last AZ in progress and the last AZ not started.
- * This is used to test the complete range of upgrade AZ stages.
- */
-const tserverAzUpgradeStatesListWithSecondLastInProgress = <T extends { status: AZUpgradeStatus }>(
-  tserverAZUpgradeStatesList: T[]
-): T[] => {
-  const tserverCount = tserverAZUpgradeStatesList.length;
-  return tserverAZUpgradeStatesList.map((az, index) => {
-    if (tserverCount === 1) {
-      return { ...az, status: AZUpgradeStatus.IN_PROGRESS };
-    }
-    if (index < tserverCount - 2) {
-      return { ...az, status: AZUpgradeStatus.COMPLETED };
-    }
-    if (index === tserverCount - 2) {
-      return { ...az, status: AZUpgradeStatus.IN_PROGRESS };
-    }
-    return { ...az, status: AZUpgradeStatus.NOT_STARTED };
-  });
-};
-
-const toPagedSoftwareUpgradeTasksResponse = (task: Task): GetPagedCustomerTaskResponse => ({
-  entities: [task],
-  hasNext: false,
-  hasPrev: false,
-  totalCount: 1
-});
-
-type PrecheckApiBody = {
-  ysql_major_version_upgrade: boolean;
-  finalize_required: boolean;
-};
-
-const defaultPrecheckBody: PrecheckApiBody = {
-  ysql_major_version_upgrade: false,
-  finalize_required: false
-};
-
-const dbUpgradeManagementSidePanelHandlers = (
-  task: Task,
-  universe: Universe,
-  precheckBody: PrecheckApiBody = defaultPrecheckBody
-) => [
-  http.post('http://localhost:9000/api/v1/customers/customer-uuid/tasks_list/page', () =>
-    HttpResponse.json(toPagedSoftwareUpgradeTasksResponse(task))
-  ),
-  http.get(`http://localhost:9000/api/v2/customers/customer-uuid/universes/${UNIVERSE_UUID}`, () =>
-    HttpResponse.json(universe)
-  ),
-  http.post(
-    `http://localhost:9000/api/v2/customers/customer-uuid/universes/${UNIVERSE_UUID}/upgrade/software/precheck`,
-    () => HttpResponse.json(precheckBody)
-  )
-];
+const defaultSoftwareUpgradeProgress = defaultDbUpgradeSoftwareUpgradeProgress();
 
 const withCustomerId = (Story: React.ComponentType) => {
   if (typeof window !== 'undefined') {
@@ -106,14 +51,18 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const storyWithTask = (task: Task, precheckBody?: PrecheckApiBody): Story => ({
+const storyWithTask = (
+  task: Task,
+  precheckOverrides?: Partial<UniverseSoftwareUpgradePrecheckResp>
+): Story => ({
   parameters: {
     msw: {
       handlers: {
-        dbUpgradeManagementSidePanel: dbUpgradeManagementSidePanelHandlers(
+        dbUpgradeManagementSidePanel: dbUpgradeManagementPanelMswHandlers(
+          UNIVERSE_UUID,
           task,
           mockUniverse,
-          precheckBody
+          createDbUpgradePrecheckMetadataMock(precheckOverrides ?? {})
         )
       }
     }
@@ -122,9 +71,9 @@ const storyWithTask = (task: Task, precheckBody?: PrecheckApiBody): Story => ({
 
 export const PrecheckRunning: Story = storyWithTask(
   createDbUpgradeTaskMock({
-    canaryUpgradeProgress: {
+    softwareUpgradeProgress: {
       precheckStatus: DbUpgradePrecheckStatus.RUNNING,
-      masterAZUpgradeStatesList: defaultCanary.masterAZUpgradeStatesList.map((az) => ({
+      masterAZUpgradeStatesList: defaultSoftwareUpgradeProgress.masterAZUpgradeStatesList.map((az) => ({
         ...az,
         status: AZUpgradeStatus.NOT_STARTED
       }))
@@ -134,9 +83,9 @@ export const PrecheckRunning: Story = storyWithTask(
 
 export const PrecheckFailed: Story = storyWithTask(
   createDbUpgradeTaskMock({
-    canaryUpgradeProgress: {
+    softwareUpgradeProgress: {
       precheckStatus: DbUpgradePrecheckStatus.FAILED,
-      masterAZUpgradeStatesList: defaultCanary.masterAZUpgradeStatesList.map((az) => ({
+      masterAZUpgradeStatesList: defaultSoftwareUpgradeProgress.masterAZUpgradeStatesList.map((az) => ({
         ...az,
         status: AZUpgradeStatus.NOT_STARTED
       }))
@@ -146,9 +95,9 @@ export const PrecheckFailed: Story = storyWithTask(
 
 export const MasterUpgradeRunning: Story = storyWithTask(
   createDbUpgradeTaskMock({
-    canaryUpgradeProgress: {
+    softwareUpgradeProgress: {
       precheckStatus: DbUpgradePrecheckStatus.SUCCESS,
-      masterAZUpgradeStatesList: defaultCanary.masterAZUpgradeStatesList.map((az, index) => ({
+      masterAZUpgradeStatesList: defaultSoftwareUpgradeProgress.masterAZUpgradeStatesList.map((az, index) => ({
         ...az,
         status: index === 0 ? AZUpgradeStatus.IN_PROGRESS : AZUpgradeStatus.COMPLETED
       }))
@@ -158,9 +107,9 @@ export const MasterUpgradeRunning: Story = storyWithTask(
 
 export const MasterUpgradeFailed: Story = storyWithTask(
   createDbUpgradeTaskMock({
-    canaryUpgradeProgress: {
+    softwareUpgradeProgress: {
       precheckStatus: DbUpgradePrecheckStatus.SUCCESS,
-      masterAZUpgradeStatesList: defaultCanary.masterAZUpgradeStatesList.map((az) => ({
+      masterAZUpgradeStatesList: defaultSoftwareUpgradeProgress.masterAZUpgradeStatesList.map((az) => ({
         ...az,
         status: AZUpgradeStatus.FAILED
       }))
@@ -170,14 +119,14 @@ export const MasterUpgradeFailed: Story = storyWithTask(
 
 export const MasterUpgradeCompletedAndUpgradePaused: Story = storyWithTask(
   createDbUpgradeTaskMock({
-    canaryUpgradeProgress: {
-      pauseState: CanaryPauseState.PAUSED_AFTER_MASTERS,
+    softwareUpgradeProgress: {
+      canaryPauseState: CanaryPauseState.PAUSED_AFTER_MASTERS,
       precheckStatus: DbUpgradePrecheckStatus.SUCCESS,
-      masterAZUpgradeStatesList: defaultCanary.masterAZUpgradeStatesList.map((az) => ({
+      masterAZUpgradeStatesList: defaultSoftwareUpgradeProgress.masterAZUpgradeStatesList.map((az) => ({
         ...az,
         status: AZUpgradeStatus.COMPLETED
       })),
-      tserverAZUpgradeStatesList: defaultCanary.tserverAZUpgradeStatesList.map((az) => ({
+      tserverAZUpgradeStatesList: defaultSoftwareUpgradeProgress.tserverAZUpgradeStatesList.map((az) => ({
         ...az,
         status: AZUpgradeStatus.NOT_STARTED
       }))
@@ -187,14 +136,14 @@ export const MasterUpgradeCompletedAndUpgradePaused: Story = storyWithTask(
 
 export const UpgradeAzTserversRunning: Story = storyWithTask(
   createDbUpgradeTaskMock({
-    canaryUpgradeProgress: {
+    softwareUpgradeProgress: {
       precheckStatus: DbUpgradePrecheckStatus.SUCCESS,
-      masterAZUpgradeStatesList: defaultCanary.masterAZUpgradeStatesList.map((az) => ({
+      masterAZUpgradeStatesList: defaultSoftwareUpgradeProgress.masterAZUpgradeStatesList.map((az) => ({
         ...az,
         status: AZUpgradeStatus.COMPLETED
       })),
       tserverAZUpgradeStatesList: tserverAzUpgradeStatesListWithSecondLastInProgress(
-        defaultCanary.tserverAZUpgradeStatesList
+        defaultSoftwareUpgradeProgress.tserverAZUpgradeStatesList
       )
     }
   })
@@ -202,13 +151,13 @@ export const UpgradeAzTserversRunning: Story = storyWithTask(
 
 export const UpgradeAzTserversFailed: Story = storyWithTask(
   createDbUpgradeTaskMock({
-    canaryUpgradeProgress: {
+    softwareUpgradeProgress: {
       precheckStatus: DbUpgradePrecheckStatus.SUCCESS,
-      masterAZUpgradeStatesList: defaultCanary.masterAZUpgradeStatesList.map((az) => ({
+      masterAZUpgradeStatesList: defaultSoftwareUpgradeProgress.masterAZUpgradeStatesList.map((az) => ({
         ...az,
         status: AZUpgradeStatus.COMPLETED
       })),
-      tserverAZUpgradeStatesList: defaultCanary.tserverAZUpgradeStatesList.map((az, index) => ({
+      tserverAZUpgradeStatesList: defaultSoftwareUpgradeProgress.tserverAZUpgradeStatesList.map((az, index) => ({
         ...az,
         status: index === 0 ? AZUpgradeStatus.FAILED : AZUpgradeStatus.NOT_STARTED
       }))
@@ -218,14 +167,14 @@ export const UpgradeAzTserversFailed: Story = storyWithTask(
 
 export const UpgradeAzTserverCompletedAndUpgradePaused: Story = storyWithTask(
   createDbUpgradeTaskMock({
-    canaryUpgradeProgress: {
-      pauseState: CanaryPauseState.PAUSED_AFTER_TSERVERS_AZ,
+    softwareUpgradeProgress: {
+      canaryPauseState: CanaryPauseState.PAUSED_AFTER_TSERVERS_AZ,
       precheckStatus: DbUpgradePrecheckStatus.SUCCESS,
-      masterAZUpgradeStatesList: defaultCanary.masterAZUpgradeStatesList.map((az) => ({
+      masterAZUpgradeStatesList: defaultSoftwareUpgradeProgress.masterAZUpgradeStatesList.map((az) => ({
         ...az,
         status: AZUpgradeStatus.COMPLETED
       })),
-      tserverAZUpgradeStatesList: defaultCanary.tserverAZUpgradeStatesList.map((az, index) => ({
+      tserverAZUpgradeStatesList: defaultSoftwareUpgradeProgress.tserverAZUpgradeStatesList.map((az, index) => ({
         ...az,
         status: index === 0 ? AZUpgradeStatus.COMPLETED : AZUpgradeStatus.NOT_STARTED
       }))
@@ -236,13 +185,13 @@ export const UpgradeAzTserverCompletedAndUpgradePaused: Story = storyWithTask(
 export const UpgradePendingFinalize: Story = storyWithTask(
   createDbUpgradeTaskMock({
     status: TaskState.SUCCESS,
-    canaryUpgradeProgress: {
+    softwareUpgradeProgress: {
       precheckStatus: DbUpgradePrecheckStatus.SUCCESS,
-      masterAZUpgradeStatesList: defaultCanary.masterAZUpgradeStatesList.map((az) => ({
+      masterAZUpgradeStatesList: defaultSoftwareUpgradeProgress.masterAZUpgradeStatesList.map((az) => ({
         ...az,
         status: AZUpgradeStatus.COMPLETED
       })),
-      tserverAZUpgradeStatesList: defaultCanary.tserverAZUpgradeStatesList.map((az) => ({
+      tserverAZUpgradeStatesList: defaultSoftwareUpgradeProgress.tserverAZUpgradeStatesList.map((az) => ({
         ...az,
         status: AZUpgradeStatus.COMPLETED
       }))
@@ -252,14 +201,14 @@ export const UpgradePendingFinalize: Story = storyWithTask(
 
 export const WithYsqlMajorUpgrade: Story = storyWithTask(
   createDbUpgradeTaskMock({
-    canaryUpgradeProgress: {
+    softwareUpgradeProgress: {
       precheckStatus: DbUpgradePrecheckStatus.SUCCESS,
-      masterAZUpgradeStatesList: defaultCanary.masterAZUpgradeStatesList.map((az) => ({
+      masterAZUpgradeStatesList: defaultSoftwareUpgradeProgress.masterAZUpgradeStatesList.map((az) => ({
         ...az,
         status: AZUpgradeStatus.COMPLETED
       })),
       tserverAZUpgradeStatesList: tserverAzUpgradeStatesListWithSecondLastInProgress(
-        defaultCanary.tserverAZUpgradeStatesList
+        defaultSoftwareUpgradeProgress.tserverAZUpgradeStatesList
       )
     }
   }),

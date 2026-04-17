@@ -56,6 +56,8 @@ export const DbUpgradeManagementSidePanel = ({
     keyPrefix: 'universeActions.dbUpgrade.dbUpgradeManagementSidePanel'
   });
 
+  const isPanelOpen = !!modalProps.open;
+
   const getPagedSoftwareUpgradeTasksRequest = {
     direction: SortDirection.DESC,
     filter: {
@@ -65,10 +67,12 @@ export const DbUpgradeManagementSidePanel = ({
   };
   const softwareUpgradeTasksQuery = useQuery(
     taskQueryKey.paged(getPagedSoftwareUpgradeTasksRequest),
-    () => api.fetchPagedCustomerTasks(getPagedSoftwareUpgradeTasksRequest)
+    () => api.fetchPagedCustomerTasks(getPagedSoftwareUpgradeTasksRequest),
+    { enabled: isPanelOpen && !!universeUuid }
   );
 
   const latestSoftwareUpgradeTask = softwareUpgradeTasksQuery.data?.entities[0];
+
   const targetDbVersion = latestSoftwareUpgradeTask?.details?.versionNumbers?.ybSoftwareVersion;
   const dbUpgradeMetadataQuery = useQuery(
     dbUpgradeMetadataQueryKey.detail(universeUuid, {
@@ -79,13 +83,16 @@ export const DbUpgradeManagementSidePanel = ({
         yb_software_version: targetDbVersion ?? ''
       }),
     {
-      enabled: !!targetDbVersion
+      enabled: isPanelOpen && !!targetDbVersion
     }
   );
   const isYsqlMajorUpgrade = dbUpgradeMetadataQuery.data?.ysql_major_version_upgrade ?? false;
-  const universeDetailsQuery = useQuery(universeQueryKey.detailsV2(universeUuid), () =>
-    getUniverse(universeUuid)
+  const universeDetailsQuery = useQuery(
+    universeQueryKey.detailsV2(universeUuid),
+    () => getUniverse(universeUuid),
+    { enabled: isPanelOpen && !!universeUuid }
   );
+
   const universe = universeDetailsQuery.data;
 
   return (

@@ -110,7 +110,7 @@ export type DbUpgradeStages = DbUpgradeStagesMetadata;
  * - tserverAzUpgradeStatesList returned by the backend is ordered by AZ upgrade order.
  */
 export const classifyDbUpgradeStages = (dbUpgradeTask: Task): DbUpgradeStagesMetadata => {
-  if (!dbUpgradeTask.canaryUpgradeProgress) {
+  if (!dbUpgradeTask.softwareUpgradeProgress) {
     return {
       preCheckStage: AccordionCardState.NEUTRAL,
       upgradeMasterServersStage: AccordionCardState.NEUTRAL,
@@ -119,15 +119,15 @@ export const classifyDbUpgradeStages = (dbUpgradeTask: Task): DbUpgradeStagesMet
     };
   }
 
-  const { canaryUpgradeProgress } = dbUpgradeTask;
+  const softwareUpgradeProgress = dbUpgradeTask.softwareUpgradeProgress;
   const preCheckStage = mapDbUpgradePrecheckStatusToAccordionCardState(
-    canaryUpgradeProgress.precheckStatus
+    softwareUpgradeProgress.precheckStatus
   );
   const upgradeMasterServersStage = classifyUpgradeMasterServersStage(
-    canaryUpgradeProgress.masterAZUpgradeStatesList
+    softwareUpgradeProgress.masterAZUpgradeStatesList
   );
 
-  const tserverAZUpgradeStatesList = canaryUpgradeProgress.tserverAZUpgradeStatesList ?? [];
+  const tserverAZUpgradeStatesList = softwareUpgradeProgress.tserverAZUpgradeStatesList ?? [];
   const upgradeAzStages: Record<string, AzUpgradeStageMetadata> = {};
   let lastCompletedTserverAzUUID: string | undefined;
   let hasNotStartedTserverAz = false;
@@ -146,7 +146,7 @@ export const classifyDbUpgradeStages = (dbUpgradeTask: Task): DbUpgradeStagesMet
   }
 
   if (
-    canaryUpgradeProgress.pauseState === CanaryPauseState.PAUSED_AFTER_TSERVERS_AZ &&
+    softwareUpgradeProgress.canaryPauseState === CanaryPauseState.PAUSED_AFTER_TSERVERS_AZ &&
     hasNotStartedTserverAz &&
     lastCompletedTserverAzUUID !== undefined
   ) {

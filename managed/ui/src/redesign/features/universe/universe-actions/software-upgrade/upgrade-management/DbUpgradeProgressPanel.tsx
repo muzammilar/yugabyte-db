@@ -90,14 +90,16 @@ export const DbUpgradeProgressPanel = ({
     upgradedAzMetadataList.map((az) => [az.azUuid, az.displayName])
   );
   const upgradeAzStageCount =
-    dbUpgradeTask.canaryUpgradeProgress?.tserverAZUpgradeStatesList?.length ?? 0;
+    dbUpgradeTask.softwareUpgradeProgress?.tserverAZUpgradeStatesList?.length ?? 0;
 
   const { preCheckStage, upgradeMasterServersStage, upgradeAzStages, finalizeStage } =
     classifyDbUpgradeStages(dbUpgradeTask);
   const isPausedAfterTservers =
-    dbUpgradeTask.canaryUpgradeProgress?.pauseState === CanaryPauseState.PAUSED_AFTER_TSERVERS_AZ;
+    dbUpgradeTask.softwareUpgradeProgress?.canaryPauseState ===
+    CanaryPauseState.PAUSED_AFTER_TSERVERS_AZ;
   const isPausedAfterMasters =
-    dbUpgradeTask.canaryUpgradeProgress?.pauseState === CanaryPauseState.PAUSED_AFTER_MASTERS;
+    dbUpgradeTask.softwareUpgradeProgress?.canaryPauseState ===
+    CanaryPauseState.PAUSED_AFTER_MASTERS;
   const isPausedAfterSuccessfulMasterServersUpgrade =
     isPausedAfterMasters && upgradeMasterServersStage === AccordionCardState.SUCCESS;
   const isTserverAzUpgradeStagesCompleted = Object.values(upgradeAzStages).every(
@@ -107,6 +109,7 @@ export const DbUpgradeProgressPanel = ({
     ? formatYbSoftwareVersionString(dbUpgradeTask.details?.versionNumbers?.ybSoftwareVersion)
     : '-';
   const taskUuid = dbUpgradeTask.id ?? '';
+
   return (
     <div className={clsx(classes.progressPanel, className)}>
       <Typography variant="h5" className={classes.title}>
@@ -168,7 +171,7 @@ export const DbUpgradeProgressPanel = ({
           </div>
         )}
       </AccordionCard>
-      {dbUpgradeTask.canaryUpgradeProgress?.tserverAZUpgradeStatesList.map(
+      {dbUpgradeTask.softwareUpgradeProgress?.tserverAZUpgradeStatesList.map(
         (azUpgradeState, index) => {
           const azUpgradeStagePresentation = upgradeAzStages[azUpgradeState.azUUID];
           const cardState =

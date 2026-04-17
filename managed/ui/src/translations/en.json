@@ -454,6 +454,65 @@
               "assessPerformanceDescription": "Compare the performance of PostgreSQL statements before and after upgrade."
             }
           }
+        },
+        "clusterBanner": {
+          "actions": {
+            "openUpgradeMonitor": "Open Upgrade Monitor",
+            "upgradeDatabase": "Upgrade Database"
+          },
+          "precheckInProgress": {
+            "title": "Upgrade pre-check in progress.",
+            "description": "Some universe operations are not available at this time. <learnMoreLink>Learn more</learnMoreLink>"
+          },
+          "precheckIssuesFound": {
+            "title": "Upgrade pre-check found issues.",
+            "description": "Universe does not meet upgrade requirements.",
+            "descriptionPg15": "Universe does not meet PG15 upgrade requirements."
+          },
+          "precheckPassed": {
+            "title": "Pre-check passed · {{date}}",
+            "descriptionPg15": "Universe is ready for PG15 upgrade."
+          },
+          "upgradingSoftware": {
+            "title": "Upgrading software.",
+            "description": "Some universe operations are not available at this time. <learnMoreLink>Learn more</learnMoreLink>",
+            "descriptionMajorDbUpgrade": "DDLs and some universe operations are not available at this time. <learnMoreLink>Learn more</learnMoreLink>"
+          },
+          "softwareUpgradeFailed": {
+            "title": "Software upgrade failed."
+          },
+          "upgradePausedForMonitoring": {
+            "title": "Upgrade paused for monitoring.",
+            "description": "Review universe health, then resume or roll back."
+          },
+          "finalizeOrRollBack": {
+            "title": "Finalize or Roll Back Upgrade.",
+            "description": "Assess universe performance and finalize or roll back."
+          },
+          "upgradeAborted": {
+            "title": "Upgrade aborted.",
+            "description": "Upgrade was canceled because universe does not meet upgrade requirements."
+          },
+          "rollingBack": {
+            "title": "Rolling back upgrade.",
+            "description": "Some universe operations are not available at this time. <learnMoreLink>Learn more</learnMoreLink>",
+            "descriptionMajorDbUpgrade": "DDLs and some universe operations are not available at this time. <learnMoreLink>Learn more</learnMoreLink>"
+          },
+          "rollbackFailed": {
+            "title": "Failed to roll back."
+          },
+          "finalizing": {
+            "title": "Finalizing upgrade.",
+            "description": "Some universe operations are not available at this time. <learnMoreLink>Learn more</learnMoreLink>",
+            "descriptionMajorDbUpgrade": "DDLs and some universe operations are not available at this time. <learnMoreLink>Learn more</learnMoreLink>"
+          },
+          "finalizeFailed": {
+            "title": "Failed to finalize upgrade."
+          },
+          "upgradeCompleted": {
+            "title": "Upgrade completed. Universe is now on {{targetDbVersion}}.",
+            "description": "Assess performance and <rollBackLinkButton>roll back</rollBackLinkButton> if needed."
+          }
         }
       },
       "dbRollbackUpgrade": {
@@ -2757,7 +2816,8 @@
         "Success": "Completed",
         "Running": "In Progress",
         "Abort": "Aborting",
-        "Aborted": "Aborted"
+        "Aborted": "Aborted",
+        "Paused": "Paused"
       },
       "progress": {
         "title": "Progress",
@@ -2771,6 +2831,7 @@
       },
       "banner": {
         "viewDetails": "View Details",
+        "retry": "Retry",
         "taskProgress": "{{percent}}%",
         "opNotAvailable": "Some operations are not available while the current operation is in progress",
         "softwareUpgradeFailed": "Software Upgrade Failed",
@@ -3797,7 +3858,7 @@
           "preferredRankRequired": "<b>Invalid configuration:</b> Each selected availability zone must have a <b>preferred rank</b> assigned.",
           "missingPreferredValue": "<b>Invalid configuration:</b> Preferred ranks must be <b>in order</b> with no gaps.",
           "expertResilienceUninferable": "<b>Invalid configuration!</b> RF {{rf}} requires either {{rf}} AZs or a minimum of {{rf}} total nodes. The current placement falls below this requirement.",
-          "expertAzBlank":"<b>Invalid configuration!</b> Availability zone cannot be left blank."
+          "expertAzBlank": "<b>Invalid configuration!</b> Availability zone cannot be left blank."
         }
       },
       "instanceSettings": {
