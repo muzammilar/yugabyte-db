@@ -285,7 +285,7 @@ public class VMImageUpgrade extends UpgradeTaskBase {
                 createServerControlTask(
                         node, processType, "stop", params -> params.isIgnoreError = true)
                     .setSubTaskGroupType(SubTaskGroupType.StoppingNodeProcesses));
-        createRootVolumeReplacementTask(node)
+        createRootVolumeReplacementTask(node, sshPortOverride)
             .setSubTaskGroupType(getTaskSubGroupType())
             .setAfterGroupRunListener(
                 g ->
@@ -304,6 +304,20 @@ public class VMImageUpgrade extends UpgradeTaskBase {
       node.ybPrebuiltAmi =
           taskParams().vmUpgradeTaskType == VmUpgradeTaskType.VmUpgradeWithCustomImages;
       List<NodeDetails> nodeList = Collections.singletonList(node);
+      // Persist updated node SSH fields to DB before provisioning subtasks, as subtasks
+      // like SetupYNP and YNPProvisioning reload the node from DB and need the target
+      // image bundle's SSH port/user to connect to the node after root volume replacement.
+      createUpdateUniverseFieldsTask(
+              u -> {
+                NodeDetails nodeDetails = u.getNode(node.nodeName);
+                if (nodeDetails != null) {
+                  nodeDetails.machineImage = node.machineImage;
+                  nodeDetails.sshUserOverride = node.sshUserOverride;
+                  nodeDetails.sshPortOverride = node.sshPortOverride;
+                  nodeDetails.ybPrebuiltAmi = node.ybPrebuiltAmi;
+                }
+              })
+          .setSubTaskGroupType(SubTaskGroupType.ConfigureUniverse);
       createHookProvisionTask(nodeList, TriggerType.PreNodeProvision);
       if (userIntent.providerType != CloudType.local) {
         createSetupYNPTask(universe, nodeList).setSubTaskGroupType(SubTaskGroupType.Provisioning);
@@ -483,7 +497,7 @@ public class VMImageUpgrade extends UpgradeTaskBase {
     return subTaskGroup;
   }
 
-  private SubTaskGroup createRootVolumeReplacementTask(NodeDetails node) {
+  private SubTaskGroup createRootVolumeReplacementTask(NodeDetails node, Integer sshPortOverride) {
     SubTaskGroup subTaskGroup = createSubTaskGroup("ReplaceRootVolume", getTaskSubGroupType());
     ReplaceRootVolume.Params replaceParams = new ReplaceRootVolume.Params();
     replaceParams.nodeName = node.nodeName;
@@ -491,6 +505,7 @@ public class VMImageUpgrade extends UpgradeTaskBase {
     replaceParams.setUniverseUUID(taskParams().getUniverseUUID());
     replaceParams.bootDisksPerNodePerZone = this.replacementRootVolumes;
     replaceParams.rootDevicePerZone = this.replacementRootDevices;
+    replaceParams.sshPortOverride = sshPortOverride;
 
     ReplaceRootVolume replaceDiskTask = createTask(ReplaceRootVolume.class);
     replaceDiskTask.initialize(replaceParams);
