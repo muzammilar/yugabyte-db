@@ -3,7 +3,7 @@ import { AxiosError } from 'axios';
 import { makeStyles } from '@material-ui/core';
 import { FormProvider, SubmitHandler, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useMutation, useQuery, useQueryClient } from 'react-query';
+import { useMutation, useQuery } from 'react-query';
 
 import { YBLoadingCircleIcon } from '@app/components/common/indicators';
 import { YBButton, YBModal, type YBModalProps } from '@app/redesign/components';
@@ -38,6 +38,10 @@ import {
 } from './utils/formUtils';
 import { buildVersionOptions } from './utils/versionUtils';
 import { DbUpgradeSummaryCard } from './upgrade-summary/DbUpgradeSummaryCard';
+import {
+  useRefreshSoftwareUpgradeTasksCache,
+  useRefreshUniverseDetailsCache
+} from '@app/redesign/helpers/cacheUtils';
 
 const MODAL_NAME = 'DbUpgradeModal';
 const TRANSLATION_KEY_PREFIX = 'universeActions.dbUpgrade.upgradeModal';
@@ -96,13 +100,13 @@ export const DbUpgradeModal = ({
   universeUuid: currentUniverseUuid,
   modalProps
 }: DBUpgradeModalProps) => {
-  const { t } = useTranslation('translation', { keyPrefix: TRANSLATION_KEY_PREFIX });
-  const classes = useStyles();
-  const queryClient = useQueryClient();
   const [currentFormStep, setCurrentFormStep] = useState<DbUpgradeFormStep>(
     DbUpgradeFormStep.DB_VERSION
   );
-
+  const { t } = useTranslation('translation', { keyPrefix: TRANSLATION_KEY_PREFIX });
+  const classes = useStyles();
+  const refreshUniverseDetailsCache = useRefreshUniverseDetailsCache(currentUniverseUuid);
+  const refreshSoftwareUpgradeTasksCache = useRefreshSoftwareUpgradeTasksCache(currentUniverseUuid);
   const universeDetailsQuery = useQuery(universeQueryKey.detailsV2(currentUniverseUuid), () =>
     getUniverse(currentUniverseUuid)
   );
@@ -158,7 +162,7 @@ export const DbUpgradeModal = ({
     (data: UniverseSoftwareUpgradeReqBody) => startSoftwareUpgrade(currentUniverseUuid, data),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries(universeQueryKey.detailsV2(currentUniverseUuid));
+        refreshSoftwareUpgradeTasksCache();
         modalProps.onClose();
       },
       onError: (error: Error | AxiosError) =>

@@ -25,6 +25,7 @@ import { handleServerError } from '@app/utils/errorHandlingUtils';
 import { universeQueryKey } from '@app/redesign/helpers/api';
 import { ApiPermissionMap } from '@app/redesign/features/rbac/ApiAndUserPermMapping';
 import { RbacValidator } from '@app/redesign/features/rbac/common/RbacApiPermValidator';
+import { useRefreshSoftwareUpgradeTasksCache } from '@app/redesign/helpers/cacheUtils';
 
 import ConnectIcon from '@app/redesign/assets/approved/connect.svg';
 
@@ -83,23 +84,23 @@ export const DbUpgradeProgressPanel = ({
   const [isDbUpgradeFinalizeModalOpen, setIsDbUpgradeFinalizeModalOpen] = useState(false);
   const classes = useStyles();
   const queryClient = useQueryClient();
+  const universeUuid = universe?.info?.universe_uuid ?? '';
+  const refreshSoftwareUpgradeTasksCache = useRefreshSoftwareUpgradeTasksCache(universeUuid);
   const { t } = useTranslation('translation', {
     keyPrefix: 'universeActions.dbUpgrade.dbUpgradeManagementSidePanel.progressPanel'
   });
 
   const resumeUpgradeMutation = useResumeCanarySoftwareUpgrade({
     mutation: {
-      onSuccess: (_: YBATaskRespResponse, variables: { uniUUID: string }) => {
-        queryClient.invalidateQueries(universeQueryKey.detailsV2(variables.uniUUID));
+      onSuccess: () => {
+        refreshSoftwareUpgradeTasksCache();
       },
       onError: (error: Error | AxiosError) =>
         handleServerError(error, {
-          customErrorLabel: t('error.requestFailureLabel')
+          customErrorLabel: t('toast.resumeUpgradeFailedLabel')
         })
     }
   });
-
-  const universeUuid = universe?.info?.universe_uuid ?? '';
 
   const resumeCanaryRbacAccessRequiredOn = {
     onResource: universeUuid,
@@ -123,7 +124,7 @@ export const DbUpgradeProgressPanel = ({
     if (!universeUuid) {
       return;
     }
-    resumeUpgradeMutation.mutateAsync({
+    resumeUpgradeMutation.mutate({
       uniUUID: universeUuid,
       data: {
         task_uuid: dbUpgradeTask.id ?? ''
@@ -259,11 +260,7 @@ export const DbUpgradeProgressPanel = ({
             {isPausedAfterSuccessfulUpgrade && (
               <AssessPerformancePrompt upgradeStageCategory={UpgradeStageCategory.UPGRADE} />
             )}
-            <UpgradeStageBanner
-              state={cardState}
-              universeUuid={universeUuid}
-              taskUuid={taskUuid}
-            />
+            <UpgradeStageBanner state={cardState} universeUuid={universeUuid} taskUuid={taskUuid} />
             {isPausedAfterSuccessfulUpgrade && (
               <div className={classes.cardButtonsContainer}>
                 <RbacValidator accessRequiredOn={rollbackRbacAccessRequiredOn} isControl>

@@ -2,7 +2,7 @@ import { AxiosError } from 'axios';
 import { FormHelperText, makeStyles, Typography } from '@material-ui/core';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { Trans, useTranslation } from 'react-i18next';
-import { useMutation, useQuery, useQueryClient } from 'react-query';
+import { useMutation, useQuery } from 'react-query';
 
 import {
   YBInputField,
@@ -20,14 +20,11 @@ import { SortDirection } from '@app/redesign/utils/dtos';
 import { getPrimaryCluster } from '@app/redesign/utils/universeUtils';
 import { handleServerError } from '@app/utils/errorHandlingUtils';
 import { formatYbSoftwareVersionString } from '@app/utils/Formatters';
-import {
-  getGetUniverseQueryKey,
-  getUniverse,
-  rollbackSoftwareUpgrade
-} from '@app/v2/api/universe/universe';
+import { getUniverse, rollbackSoftwareUpgrade } from '@app/v2/api/universe/universe';
 import type { UniverseRollbackUpgradeReqBody } from '@app/v2/api/yugabyteDBAnywhereV2APIs.schemas';
 import { UpgradePace } from './constants';
 import { getPlacementAzMetadataList } from './utils/formUtils';
+import { useRefreshUniverseTasksCache } from '@app/redesign/helpers/cacheUtils';
 
 import ClockRewindIcon from '@app/redesign/assets/clock-rewind.svg';
 import InfoIcon from '@app/redesign/assets/info-message.svg';
@@ -211,7 +208,7 @@ export const DbUpgradeRollBackModal = ({
 }: DbUpgradeRollBackModalProps) => {
   const { t } = useTranslation('translation', { keyPrefix: TRANSLATION_KEY_PREFIX });
   const classes = useStyles();
-  const queryClient = useQueryClient();
+  const refreshUniverseTasksCache = useRefreshUniverseTasksCache(universeUuid);
 
   const isModalOpen = !!modalProps.open;
 
@@ -264,7 +261,7 @@ export const DbUpgradeRollBackModal = ({
     (data: UniverseRollbackUpgradeReqBody) => rollbackSoftwareUpgrade(universeUuid, data),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries(universeQueryKey.detailsV2(universeUuid));
+        refreshUniverseTasksCache();
         modalProps.onClose();
       },
       onError: (error: Error | AxiosError) =>

@@ -366,8 +366,8 @@
             "upgrade": "Upgrade"
           },
           "toast": {
-            "dbUpgradeInitiated": "Database upgrade initiated",
-            "dbUpgradeFailed": "Database upgrade request failed"
+            "dbUpgradeFailed": "Database upgrade request failed",
+            "dbUpgradePrecheckFailed": "Database pre-check request failed"
           }
         },
         "rollbackModal": {
@@ -405,7 +405,10 @@
           "noRollBackAfterFinalize": "After the upgrade is finalized, you won't be able to roll back.",
           "makeSureToEvaluatePerformance": "Make sure you evaluate the universe performance before finalizing the upgrade.",
           "evaluationLink": "View recommended evaluation steps",
-          "submitLabel": "Proceed to finalize the upgrade"
+          "submitLabel": "Proceed to finalize the upgrade",
+          "toast": {
+            "finalizeUpgradeFailedLabel": "Finalize DB upgrade request failed"
+          }
         },
         "dbUpgradeManagementSidePanel": {
           "title": "Upgrade Monitor",
@@ -459,11 +462,15 @@
               "title": "Finalize Upgrade",
               "assessPerformanceTitle": "Before finalizing, assess your universe's performance",
               "assessPerformanceDescription": "Compare the performance of PostgreSQL statements before and after upgrade."
+            },
+            "toast": {
+              "resumeUpgradeFailedLabel": "Resume DB upgrade request failed"
             }
           }
         },
         "clusterBanner": {
           "actions": {
+            "viewDetails": "View Details",
             "openUpgradeMonitor": "Open Upgrade Monitor",
             "upgradeDatabase": "Upgrade Database"
           },
@@ -473,12 +480,13 @@
           },
           "precheckIssuesFound": {
             "title": "Upgrade pre-check found issues.",
-            "description": "Universe does not meet upgrade requirements.",
+            "description": "Universe does not meet DB upgrade requirements.",
             "descriptionPg15": "Universe does not meet PG15 upgrade requirements."
           },
           "precheckPassed": {
-            "title": "Pre-check passed · {{date}}",
-            "descriptionPg15": "Universe is ready for PG15 upgrade."
+            "title": "Pre-check passed · <dateLabel>{{date}}</dateLabel>.",
+            "descriptionPg15": "Universe is ready for PG15 upgrade.",
+            "description": "Universe is ready for DB upgrade."
           },
           "upgradingSoftware": {
             "title": "Upgrading software.",

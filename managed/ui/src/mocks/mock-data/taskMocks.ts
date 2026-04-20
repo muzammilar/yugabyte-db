@@ -237,6 +237,62 @@ export const createDbUpgradeTaskMock = (overrides: CreateDbUpgradeTaskMockOverri
   };
 };
 
+export const DB_UPGRADE_PRECHECK_VALIDATION_TASK_ID =
+  'a0000001-0001-4000-8000-000000000001';
+
+export const DB_UPGRADE_PRECHECK_VALIDATION_TASK_UNIVERSE_UUID =
+  'a0000001-0001-4000-8000-000000000002';
+
+const buildDbUpgradePrecheckValidationTaskFixture = (): Task => ({
+  id: DB_UPGRADE_PRECHECK_VALIDATION_TASK_ID,
+  title: 'Upgraded Software Universe : mock-universe',
+  percentComplete: 91,
+  createTime: '2026-04-20T21:53:38Z',
+  completionTime: '2026-04-20T21:53:42Z',
+  target: TargetType.UNIVERSE as Task['target'],
+  targetUUID: DB_UPGRADE_PRECHECK_VALIDATION_TASK_UNIVERSE_UUID,
+  type: TaskType.SOFTWARE_UPGRADE as Task['type'],
+  typeName: 'Validation Software Upgrade',
+  status: TaskState.FAILURE,
+  details: {
+    taskDetails: [
+      {
+        title: 'Preflight Checks',
+        description: 'Perform preflight checks to determine if the task target is healthy.',
+        state: TaskState.FAILURE,
+        extraDetails: []
+      }
+    ],
+    versionNumbers: {
+      ybPrevSoftwareVersion: '2025.2.2.2-b11',
+      ybSoftwareVersion: '2025.1.1.0-b110'
+    }
+  },
+  abortable: false,
+  retryable: false,
+  canRollback: false,
+  correlationId: 'a0000001-0001-4000-8000-000000000003',
+  userEmail: 'admin',
+  subtaskInfos: [],
+  taskInfo: {
+    taskParams: {}
+  }
+});
+
+export const createDbUpgradePrecheckValidationTaskMock = (overrides: Partial<Task> = {}): Task => {
+  const base = buildDbUpgradePrecheckValidationTaskFixture();
+  return {
+    ...base,
+    ...overrides,
+    details: {
+      ...base.details,
+      ...(overrides.details ?? {}),
+      taskDetails: overrides.details?.taskDetails ?? base.details.taskDetails,
+      versionNumbers: overrides.details?.versionNumbers ?? base.details.versionNumbers
+    }
+  };
+};
+
 /**
  * Mock body for `POST .../upgrade/software/precheck`
  */

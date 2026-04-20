@@ -14,8 +14,8 @@ import { getUniverse, precheckSoftwareUpgrade } from '@app/v2/api/universe/unive
 import { UniverseInfoSoftwareUpgradeState } from '@app/v2/api/yugabyteDBAnywhereV2APIs.schemas';
 import { formatYbSoftwareVersionString } from '@app/utils/Formatters';
 import { assertUnreachableCase } from '@app/utils/errorHandlingUtils';
-
-import { Task, TaskState, TaskType } from '../../dtos';
+import { getIsDbUpgradeTask } from '../../utils/dbUpgradeTaskUtils';
+import { Task, TaskState } from '../../dtos';
 import { ClusterOperationBanner, ClusterOperationBannerType } from './ClusterOperationBanner';
 
 import ConnectIcon from '@app/redesign/assets/approved/connect.svg';
@@ -34,7 +34,7 @@ export const DbUpgradeTaskBanner = ({ task, universeUuid }: DbUpgradeTaskBannerP
   const { t } = useTranslation('translation', {
     keyPrefix: 'universeActions.dbUpgrade.clusterBanner'
   });
-  const isDbUpgradeTask = task.type === TaskType.SOFTWARE_UPGRADE;
+  const isDbUpgradeTask = getIsDbUpgradeTask(task);
   const targetDbVersion = task.details?.versionNumbers?.ybSoftwareVersion ?? '';
 
   const universeDetailsQuery = useQuery(
@@ -57,7 +57,6 @@ export const DbUpgradeTaskBanner = ({ task, universeUuid }: DbUpgradeTaskBannerP
   );
 
   if (!isDbUpgradeTask) {
-    // DbUpgradeTaskBanner is only displayed for DB upgrade tasks
     return null;
   }
 

@@ -2,17 +2,16 @@ import { YBModal, YBModalProps } from '@app/redesign/components';
 import { makeStyles, Link as MuiLink, Typography } from '@material-ui/core';
 import { useTranslation } from 'react-i18next';
 import { handleServerError } from '@app/utils/errorHandlingUtils';
-import { useQueryClient } from 'react-query';
 import { AxiosError } from 'axios';
 
 import ExternalLinkIcon from '@app/redesign/assets/approved/share-04.svg';
-import { YBA_UNIVERSE_UPGRADE_EVALUATION_LINK } from './constants';
 import { useFinalizeSoftwareUpgrade } from '@app/v2/api/universe/universe';
-import { universeQueryKey } from '@app/redesign/helpers/api';
 import { ApiPermissionMap } from '@app/redesign/features/rbac/ApiAndUserPermMapping';
 import { hasNecessaryPerm } from '@app/redesign/features/rbac/common/RbacApiPermValidator';
 import { RBAC_ERR_MSG_NO_PERM } from '@app/redesign/features/rbac/common/validator/ValidatorUtils';
 import { YBATaskRespResponse } from '@app/v2/api/yugabyteDBAnywhereV2APIs.schemas';
+import { useRefreshUniverseTasksCache } from '@app/redesign/helpers/cacheUtils';
+import { YBA_UNIVERSE_UPGRADE_EVALUATION_LINK } from './constants';
 
 const useStyles = makeStyles((theme) => ({
   modalContainer: {
@@ -46,19 +45,19 @@ export const DbUpgradeFinalizeModal = ({
   modalProps
 }: DbUpgradeFinalizeModalProps) => {
   const classes = useStyles();
-  const queryClient = useQueryClient();
+  const refreshUniverseDetailsCache = useRefreshUniverseTasksCache(universeUuid);
   const { t } = useTranslation('translation', {
     keyPrefix: 'universeActions.dbUpgrade.finalizeModal'
   });
   const finalizeUpgradeMutation = useFinalizeSoftwareUpgrade({
     mutation: {
       onSuccess: (_: YBATaskRespResponse, variables: { uniUUID: string }) => {
-        queryClient.invalidateQueries(universeQueryKey.detailsV2(variables.uniUUID));
+        refreshUniverseDetailsCache();
         modalProps.onClose();
       },
       onError: (error: Error | AxiosError) =>
         handleServerError(error, {
-          customErrorLabel: t('error.requestFailureLabel')
+          customErrorLabel: t('toast.finalizeUpgradeFailedLabel')
         })
     }
   });

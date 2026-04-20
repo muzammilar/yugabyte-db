@@ -13,14 +13,19 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useLocalStorage } from 'react-use';
 import { noop, values } from 'lodash';
 import { makeStyles } from '@material-ui/core';
+import { useQuery } from 'react-query';
 
+import { api, runtimeConfigQueryKey } from '@app/redesign/helpers/api';
+import { RuntimeConfigKey } from '@app/redesign/helpers/constants';
 import { TaskInProgressBanner } from './bannerComp/TaskInProgressBanner';
 import { TaskSuccessBanner } from './bannerComp/TaskSuccessBanner';
 import { TaskFailedBanner } from './bannerComp/TaskFailedBanner';
 import { TaskFailedSoftwareUpgradeBanner } from './bannerComp/TaskFailedSoftwareUpgradeBanner';
 import { isSoftwareUpgradeFailed, useIsTaskNewUIEnabled } from '../TaskUtils';
 import { hideTaskInDrawer, showTaskInDrawer } from '../../../../actions/tasks';
-import { Task, TaskState, TaskType } from '../dtos';
+import { Task, TaskState } from '../dtos';
+import { getIsDbUpgradePrecheckTask, getIsDbUpgradeTask } from '../utils/dbUpgradeTaskUtils';
+import { DbUpgradePrecheckTaskBanner } from './clusterBanner/DbUpgradePrecheckTaskBanner';
 import { DbUpgradeTaskBanner } from './clusterBanner/DbUpgradeTaskBanner';
 
 const useStyles = makeStyles((theme) => ({
@@ -49,6 +54,17 @@ export const TaskDetailBanner: FC<TaskDetailBannerProps> = ({ universeUUID }) =>
   // instead of using react query , we use the data from the redux store.
   // Old task components use redux store. We want to make sure we display the same progress across the ui.
   const taskList = useSelector((data: any) => data.tasks);
+
+  const universeRuntimeConfigsQuery = useQuery(
+    runtimeConfigQueryKey.universeScope(universeUUID),
+    () => api.fetchRuntimeConfigs(universeUUID),
+    { enabled: !!universeUUID }
+  );
+
+  const isCanaryUpgradeEnabled =
+    universeRuntimeConfigsQuery.data?.configEntries?.find(
+      (c: { key: string; value: string }) => c.key === RuntimeConfigKey.ENABLE_CANARY_UPGRADE
+    )?.value === 'true';
 
   const tasksInUniverse = taskList.customerTaskList;
 
@@ -132,9 +148,19 @@ export const TaskDetailBanner: FC<TaskDetailBannerProps> = ({ universeUUID }) =>
 
   if (!task) return null;
 
-  const isDbUpgradeTask =
-    task.type === TaskType.SOFTWARE_UPGRADE && task.typeName === 'Software Upgrade';
-  if (isDbUpgradeTask) {
+  if (getIsDbUpgradePrecheckTask(task) && isCanaryUpgradeEnabled) {
+    return (
+      <div className={classes.bannerContainer}>
+        <DbUpgradePrecheckTaskBanner
+          task={task}
+          universeUuid={universeUUID}
+          onDismiss={hideBanner}
+        />
+      </div>
+    );
+  }
+
+  if (getIsDbUpgradeTask(task) && isCanaryUpgradeEnabled) {
     return (
       <div className={classes.bannerContainer}>
         <DbUpgradeTaskBanner task={task} universeUuid={universeUUID} />

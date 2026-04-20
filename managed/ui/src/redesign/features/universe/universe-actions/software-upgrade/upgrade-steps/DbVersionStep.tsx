@@ -4,6 +4,7 @@ import { YBAutoComplete, YBButton } from '@yugabyte-ui-library/core';
 import { Controller, useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
+import { AxiosError } from 'axios';
 
 import { ApiPermissionMap } from '@app/redesign/features/rbac/ApiAndUserPermMapping';
 import { RbacValidator } from '@app/redesign/features/rbac/common/RbacApiPermValidator';
@@ -12,11 +13,8 @@ import { DbUpgradeInfoCard } from '../DbUpgradeInfoCard';
 import { DbReleaseAutocompleteOption } from '../DbReleaseAutocompleteOption';
 import type { DBUpgradeFormFields, ReleaseOption } from '../types';
 import { useDbUpgradeModalContext } from '../DbUpgradeModalContext';
-
-const TRANSLATION_KEY_PREFIX = 'universeActions.dbUpgrade.upgradeModal.dbVersionStep';
-
-const FIELD_LABEL_WIDTH = 100;
-const FIELD_ROW_GAP_UNITS = 4;
+import { useRefreshUniverseTasksCache } from '@app/redesign/helpers/cacheUtils';
+import { handleServerError } from '@app/utils/errorHandlingUtils';
 
 const useStyles = makeStyles((theme) => ({
   formFieldsContainer: {
@@ -72,12 +70,17 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const TEST_ID_PREFIX = 'DbVersionStep';
+const FIELD_LABEL_WIDTH = 100;
+const FIELD_ROW_GAP_UNITS = 4;
 
 export const DbVersionStep = () => {
-  const { t } = useTranslation('translation', { keyPrefix: TRANSLATION_KEY_PREFIX });
+  const { t } = useTranslation('translation', {
+    keyPrefix: 'universeActions.dbUpgrade.upgradeModal.dbVersionStep'
+  });
   const classes = useStyles();
   const { currentUniverseUuid, currentDbVersion, targetReleaseOptions, closeModal } =
     useDbUpgradeModalContext();
+  const refreshUniverseTasksCache = useRefreshUniverseTasksCache(currentUniverseUuid);
 
   const softwareUpgradeRbacAccessRequiredOn = {
     onResource: currentUniverseUuid,
@@ -92,7 +95,15 @@ export const DbVersionStep = () => {
       }),
     {
       onSuccess: () => {
+        refreshUniverseTasksCache();
         closeModal();
+      },
+      onError: (error: Error | AxiosError) => {
+        handleServerError(error, {
+          customErrorLabel: t('toast.dbUpgradePrecheckFailed', {
+            keyPrefix: 'universeActions.dbUpgrade.upgradeModal'
+          })
+        });
       }
     }
   );
