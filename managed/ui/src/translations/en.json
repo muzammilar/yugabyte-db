@@ -333,7 +333,8 @@
             "canary": {
               "title": "Canary upgrade",
               "tag": "Advanced",
-              "description": "Includes monitoring pauses and mid-upgrade rollback opportunities."
+              "description": "Includes monitoring pauses and mid-upgrade rollback opportunities.",
+              "unavailableTooltip": "Not available for this universe. Learn more about <dbUpgradeRequirementsLink>canary upgrade requirements</dbUpgradeRequirementsLink>."
             },
             "upgradePace": {
               "title": "Upgrade Pace",

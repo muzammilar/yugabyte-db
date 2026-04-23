@@ -39,3 +39,5 @@ export const AzClusterKind = {
 } as const;
 export type AzClusterKind = (typeof AzClusterKind)[keyof typeof AzClusterKind];
 
+export const DB_UPGRADE_REQUIREMENTS_DOC_URL =
+  'https://docs.yugabyte.com/stable/yugabyte-platform/manage-deployments/upgrade-software/';

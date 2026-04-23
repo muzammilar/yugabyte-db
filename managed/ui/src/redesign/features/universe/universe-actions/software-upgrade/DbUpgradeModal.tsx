@@ -24,6 +24,7 @@ import { ReleaseState, type YbdbRelease } from './dtos';
 import { buildVersionOptions } from './utils/versionUtils';
 import { DbUpgradeSummaryCard } from './upgrade-summary/DbUpgradeSummaryCard';
 import { CurrentDbUpgradeFormStep } from './CurrentDbUpgradeFormStep';
+import { DbUpgradeModalContextProvider } from './DbUpgradeModalContext';
 import { YBStepper } from '@app/redesign/components/YBStepper/YBStepper';
 import {
   DB_UPGRADE_FIRST_FORM_STEP,
@@ -303,19 +304,27 @@ export const DbUpgradeModal = ({
           <div className={classes.formScrollArea}>
             {universeDetailsQuery.isLoading ||
             universeRuntimeConfigsQuery.isLoading ||
-            dbReleasesQuery.isLoading ? (
+            dbReleasesQuery.isLoading ||
+            !universeDetailsQuery.data ? (
               <div className={classes.loadingContainer}>
                 <YBLoadingCircleIcon />
               </div>
             ) : (
-              <CurrentDbUpgradeFormStep
-                currentUniverseUuid={currentUniverseUuid}
-                currentFormStep={currentFormStep}
-                currentRelease={currentDbVersion}
-                targetReleaseOptions={targetReleaseOptions}
-                maxNodesPerBatchMaximum={maxNodesPerBatchMaximum}
-                onPreCheckSuccess={modalProps.onClose}
-              />
+              <DbUpgradeModalContextProvider
+                value={
+                  {
+                    currentUniverseUuid,
+                    universeDetails: universeDetailsQuery.data,
+                    currentDbVersion,
+                    clusters,
+                    maxNodesPerBatchMaximum,
+                    targetReleaseOptions,
+                    closeModal: modalProps.onClose
+                  }
+                }
+              >
+                <CurrentDbUpgradeFormStep currentFormStep={currentFormStep} />
+              </DbUpgradeModalContextProvider>
             )}
           </div>
         </div>
