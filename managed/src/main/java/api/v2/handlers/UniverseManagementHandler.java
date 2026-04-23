@@ -210,7 +210,8 @@ public class UniverseManagementHandler extends ApiControllerUtils {
       expr = expr.eq("name", nameFilter);
     }
 
-    String order = spec.getDirection().toString();
+    UniversePagedQuerySpec.DirectionEnum sortDirection = spec.getDirection();
+    String order = sortDirection == UniversePagedQuerySpec.DirectionEnum.DESC ? "desc" : "asc";
     // sort: case-insensitive name, then UUID; null names sort like empty.
     String orderBy = String.format("coalesce(lower(name), '') %s, universe_uuid %s", order, order);
     expr = expr.orderBy(orderBy);
