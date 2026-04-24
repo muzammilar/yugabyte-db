@@ -2809,6 +2809,7 @@
       "actions": {
         "retry": "Retry",
         "abort": "Abort",
+        "rollback": "Rollback",
         "diffs": {
           "Update": "View Universe Changes",
           "SoftwareUpgrade": "View Software Upgrade Changes",
@@ -2820,10 +2821,14 @@
           "abortConfirmMsg": "Do you really want to abort this task?",
           "retryConfirmTitle": "Retry Task ?",
           "retryConfirmMsg": "Do you really want to retry this task?",
+          "rollbackConfirmTitle": "Rollback Task ?",
+          "rollbackConfirmMsg": "Do you really want to rollback this task?",
           "taskAbortSuccess": "Task abort started",
           "taskAbortFailed": "Task abort failed",
           "taskRetrySuccess": "Task retry started",
-          "taskRetryFailed": "Task retry failed"
+          "taskRetryFailed": "Task retry failed",
+          "taskRollbackSuccess": "Task rollback started",
+          "taskRollbackFailed": "Task rollback failed"
         }
       },
       "info": {
