@@ -24,7 +24,6 @@ import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.Cluster;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.UserIntent;
 import com.yugabyte.yw.forms.VMImageUpgradeParams;
 import com.yugabyte.yw.forms.VMImageUpgradeParams.VmUpgradeTaskType;
-import com.yugabyte.yw.models.Customer;
 import com.yugabyte.yw.models.HookScope.TriggerType;
 import com.yugabyte.yw.models.ImageBundle;
 import com.yugabyte.yw.models.Provider;
@@ -305,8 +304,6 @@ public class VMImageUpgrade extends UpgradeTaskBase {
       node.ybPrebuiltAmi =
           taskParams().vmUpgradeTaskType == VmUpgradeTaskType.VmUpgradeWithCustomImages;
       List<NodeDetails> nodeList = Collections.singletonList(node);
-      // Must use ansible provisioning for non-systemd universes
-      Customer customer = Customer.get(universe.getCustomerId());
       createHookProvisionTask(nodeList, TriggerType.PreNodeProvision);
       if (userIntent.providerType != CloudType.local) {
         createSetupYNPTask(universe, nodeList).setSubTaskGroupType(SubTaskGroupType.Provisioning);

@@ -2969,7 +2969,7 @@ public abstract class UniverseDefinitionTaskBase extends UniverseTaskBase {
    *
    * @param nodesToBeStarted nodes on which yb-controller processes are to be started.
    */
-  public void createStartYbcProcessTasks(Set<NodeDetails> nodesToBeStarted, boolean isSystemd) {
+  public void createStartYbcProcessTasks(Set<NodeDetails> nodesToBeStarted) {
     // Create Start yb-controller tasks for non-systemd only
     createStartYbcTasks(nodesToBeStarted).setSubTaskGroupType(SubTaskGroupType.ConfigureUniverse);
     // Wait for yb-controller to be responsive on each node.

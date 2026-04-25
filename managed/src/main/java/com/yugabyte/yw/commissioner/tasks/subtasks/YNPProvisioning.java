@@ -140,7 +140,6 @@ public class YNPProvisioning extends NodeTaskBase {
             : taskUserIntent;
     AnsibleSetupServer.Params ansibleParams = new AnsibleSetupServer.Params();
     fillSetupParamsForNode(ansibleParams, userIntent, node);
-    ansibleParams.skipAnsiblePlaybook = true;
     ansibleParams.sshUserOverride = node.sshUserOverride;
     ansibleParams.sshPortOverride = node.sshPortOverride;
     return ansibleParams;
