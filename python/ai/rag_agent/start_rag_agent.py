@@ -46,6 +46,11 @@ embedding_generation_poller = None
 embedding_generation_poller_thread = None
 embedding_generation_poller_active = False
 
+POLL_IDLE_SLEEP = int(os.getenv("POLL_IDLE_SLEEP_SECONDS", "1"))
+POLL_ERROR_BACKOFF = int(os.getenv("POLL_ERROR_BACKOFF_SECONDS", "60"))
+EMBEDDING_POLL_IDLE_SLEEP = int(os.getenv("EMBEDDING_POLL_IDLE_SLEEP_SECONDS", "1"))
+EMBEDDING_POLL_ERROR_BACKOFF = int(os.getenv("EMBEDDING_POLL_ERROR_BACKOFF_SECONDS", "60"))
+
 
 def route_task(task: WorkQueueTask) -> Dict[str, Any]:
     """
@@ -95,7 +100,7 @@ def embedding_generation_worker():
                     status = route_task(task)
                 else:
                     # No task available, sleep briefly before polling again
-                    sleep_duration = 1
+                    sleep_duration = EMBEDDING_POLL_IDLE_SLEEP
                     time.sleep(sleep_duration)
                     logger.info(
                         f"No user prompt embedding task available, sleeping "
@@ -104,10 +109,10 @@ def embedding_generation_worker():
 
             except Exception as e:
                 logger.error(f"Error in polling loop: {e}")
-                time.sleep(60)  # Back off before retrying
+                time.sleep(EMBEDDING_POLL_ERROR_BACKOFF)
                 logger.info(
-                    "Error in polling loop, sleeping for 60 seconds "
-                    "before retrying"
+                    f"Error in polling loop, sleeping for "
+                    f"{EMBEDDING_POLL_ERROR_BACKOFF} seconds before retrying"
                 )
     finally:
         logger.info("Embedding generation worker thread shutting down")
@@ -198,7 +203,7 @@ def polling_worker():
                     status = route_task(task)
                 else:
                     # No task available, sleep briefly before polling again
-                    sleep_duration = 60  # 1 minute
+                    sleep_duration = POLL_IDLE_SLEEP
                     time.sleep(sleep_duration)
                     logger.info(
                         f"No task available, sleeping for "
@@ -207,10 +212,10 @@ def polling_worker():
 
             except Exception as e:
                 logger.error(f"Error in polling loop: {e}")
-                time.sleep(60)  # Back off before retrying
+                time.sleep(POLL_ERROR_BACKOFF)
                 logger.info(
-                    "Error in polling loop, sleeping for 60 seconds "
-                    "before retrying"
+                    f"Error in polling loop, sleeping for "
+                    f"{POLL_ERROR_BACKOFF} seconds before retrying"
                 )
     finally:
         logger.info("Polling worker thread shutting down")
