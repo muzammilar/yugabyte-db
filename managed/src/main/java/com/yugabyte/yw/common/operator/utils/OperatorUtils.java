@@ -258,6 +258,10 @@ public class OperatorUtils {
     ybUniverseResourceDetails.name = universeName;
     ybUniverseResourceDetails.namespace = namespace;
     YBUniverse ybUniverse = getYBUniverse(ybUniverseResourceDetails);
+    if (ybUniverse == null) {
+      log.debug("YBUniverse '{}' not found in namespace '{}'", universeName, namespace);
+      return null;
+    }
     String name = YBUniverseReconciler.getUniverseName(ybUniverse);
     log.debug("Getting universe from name: {}", name);
     Optional<Universe> universe = Universe.maybeGetUniverseByName(customerId, name);
