@@ -746,7 +746,6 @@ public class NodeAgentRpcPayload {
                     ShellProcessContext.DEFAULT,
                     true);
                 // Create the gflags_dir.
-                StringBuilder sb = new StringBuilder();
                 nodeAgentClient.executeCommand(
                     nodeAgent,
                     Arrays.asList(
