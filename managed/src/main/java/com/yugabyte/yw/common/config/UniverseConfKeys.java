@@ -1862,4 +1862,12 @@ public class UniverseConfKeys extends RuntimeConfigKeysModule {
               + " universes.",
           ConfDataType.BooleanType,
           ImmutableList.of(ConfKeyTags.PUBLIC));
+  public static final ConfKeyInfo<Duration> flushTabletsTimeoutOnStopTserver =
+      new ConfKeyInfo<>(
+          "yb.task.flush_tablets_timeout_on_stop_tserver",
+          ScopeType.UNIVERSE,
+          "Flush Tablets Timeout on Stop TServer",
+          "Timeout for flushing tablets when stopping tserver",
+          ConfDataType.DurationType,
+          ImmutableList.of(ConfKeyTags.PUBLIC));
 }

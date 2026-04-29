@@ -1099,7 +1099,7 @@ public abstract class CommissionerBaseTest extends PlatformGuiceApplicationBaseT
 
           TabletServerInfo tserverInfo = new TabletServerInfo();
           tserverInfo.setCloudInfo(cloudInfo);
-          tserverInfo.setUuid(UUID.randomUUID());
+          tserverInfo.setPermanentUuid(UUID.randomUUID().toString().replace("-", ""));
           tserverInfo.setInPrimaryCluster(cluster.clusterType.equals(ClusterType.PRIMARY));
           tserverInfo.setPlacementUuid(clusterUuid);
           tserverInfo.setPrivateRpcAddress(

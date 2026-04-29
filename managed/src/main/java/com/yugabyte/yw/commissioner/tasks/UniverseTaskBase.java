@@ -5032,10 +5032,10 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
       Set<ServerType> processes,
       boolean removeMasterFromQuorum,
       boolean deconfigure,
+      boolean flushTablets,
       SubTaskGroupType subTaskGroupType) {
     if (processes.contains(ServerType.TSERVER)) {
       addLeaderBlackListIfAvailable(nodes, subTaskGroupType);
-
       if (deconfigure) {
         UUID placementUuid = nodes.get(0).placementUuid;
         // Remove node from load balancer.
@@ -5050,7 +5050,13 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
     }
     for (ServerType processType : processes) {
       createServerControlTasks(
-              nodes, processType, "stop", params -> params.deconfigure = deconfigure)
+              nodes,
+              processType,
+              "stop",
+              params -> {
+                params.deconfigure = deconfigure;
+                params.flushTabletsOnStopTserver = flushTablets;
+              })
           .setSubTaskGroupType(subTaskGroupType);
       if (processType == ServerType.MASTER && removeMasterFromQuorum) {
         createWaitForMasterLeaderTask().setSubTaskGroupType(subTaskGroupType);

@@ -511,6 +511,7 @@ public abstract class EditUniverseTaskBase extends UniverseDefinitionTaskBase {
           EnumSet.of(ServerType.TSERVER),
           false /* remove master from quorum */,
           false /* deconfigure */,
+          false /* flushTablets */,
           SubTaskGroupType.UpdatingGFlags);
 
       AnsibleConfigureServers.Params params =
