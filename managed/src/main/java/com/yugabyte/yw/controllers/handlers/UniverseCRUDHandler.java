@@ -1021,6 +1021,14 @@ public class UniverseCRUDHandler {
 
       UserIntent.MultiTenancyConfig mtConfig = userIntent.getMultiTenancy();
       if (mtConfig != null && mtConfig.isEnableQos()) {
+        if (!confGetter
+            .getCustomerConf(customer)
+            .getBoolean(UniverseConfKeys.allowMultiTenancy.getKey())) {
+          throw new PlatformServiceException(
+              BAD_REQUEST,
+              "Multi-tenancy is not allowed. Please set runtime flag"
+                  + " 'yb.universe.allow_multi_tenancy' to true.");
+        }
         if (Util.compareYBVersions(
                 userIntent.ybSoftwareVersion,
                 Util.MULTITENANCY_SUPPORTED_DB_VERSION_STABLE,
