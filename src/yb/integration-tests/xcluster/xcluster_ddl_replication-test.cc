@@ -4729,6 +4729,10 @@ TEST_F(XClusterDDLReplicationTest, DDLQueuePollerPreservesOriginalError) {
 }
 
 TEST_F(XClusterDDLReplicationTest, VectorIndexCreatedBeforeDrSetup) {
+  if (!UseYbController()) {
+    GTEST_SKIP() << "This test does not work with yb_backup.py";
+  }
+
   ANNOTATE_UNPROTECTED_WRITE(FLAGS_TEST_vector_index_exact) = true;
   auto params = XClusterDDLReplicationTestBase::kDefaultParams;
   params.is_colocated = true;
