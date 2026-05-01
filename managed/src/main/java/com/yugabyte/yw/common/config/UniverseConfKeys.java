@@ -1898,4 +1898,13 @@ public class UniverseConfKeys extends RuntimeConfigKeysModule {
           "If this flag is enabled, the precheck that requires YCQL to be disabled is skipped",
           ConfDataType.BooleanType,
           ImmutableList.of(ConfKeyTags.PUBLIC));
+  public static final ConfKeyInfo<Boolean> allowMultiTenancyTestUi =
+      new ConfKeyInfo<>(
+          "yb.universe.allow_multi_tenancy_test_ui",
+          ScopeType.UNIVERSE,
+          "Show multi-tenancy controls in the UI for testing",
+          "When true, YugabyteDB Anywhere shows a test UI for multi-tenancy (QoS). API enablement"
+              + " still requires yb.universe.allow_multi_tenancy.",
+          ConfDataType.BooleanType,
+          ImmutableList.of(ConfKeyTags.INTERNAL));
 }

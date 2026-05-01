@@ -649,6 +649,18 @@
         "overrideWarningRF3": "<strong>Note!</strong> Editing connection pooling ports requires a rolling restart of <strong>{{universeName}}</strong>. The universe will remain online and available throughout.",
         "overrideWarningRF1": "<strong>Note!</strong> Editing connection pooling ports requires a restart of <strong>{{universeName}}</strong>. The universe won't be available for reads and writes during the restart."
       },
+      "multiTenancy": {
+        "modalTitle": "Edit multi-tenancy (QoS)",
+        "toggleLabel": "Enable QoS multi-tenancy",
+        "subText": "Configure QoS-based multi-tenancy for YSQL. Requires cgroup support, compatible DB version, and YSQL-only access (YCQL disabled).",
+        "cpuPercentLabel": "Max DB CPU % (qosMaxDbCpuPercent)",
+        "cpuPercentHelper": "0–100",
+        "dbCountLabel": "Max DB count (qosMaxDbCount)",
+        "dbCountHelper": "Integer ≥ 1",
+        "changeWarningRf3": "<strong>Note!</strong> Changing multi-tenancy may require a rolling restart of <strong>{{universeName}}</strong>.",
+        "changeWarningRf1": "<strong>Note!</strong> Changing multi-tenancy may require a restart of <strong>{{universeName}}</strong>.",
+        "requestFailedLabel": "Request to update YSQL settings failed"
+      },
       "supportBundle": {
         "editCustomPrometheusQueriesModal": {
           "title": "Custom Queries",
