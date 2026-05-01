@@ -270,18 +270,23 @@
         "forceApply": "Force Apply"
       },
       "dbUpgrade": {
-        "upgradeModal": {
-          "modalTitle": "Upgrade Database",
-          "fields": {
+        "sharedComponents": {
+          "rollingUpdateBatchSettings": {
             "maxNodesPerBatch": "Max nodes per batch:",
+            "maxNodesPerBatchTooltip": "Applies to T-Servers.\nMasters are upgraded one at a time.",
+            "maxNodesPerBatchTooltipRollback": "Applies to T-Servers.\nMasters are rolled back one at a time.",
             "waitBetweenBatches": "Wait between batches:",
+            "waitBetweenBatchesTooltip": "Applies between all batches\n(Masters and T-Servers).",
             "seconds": "seconds",
             "validationError": {
               "maxNodesPerBatchMinimum": "Max nodes per batch must be a positive number.",
               "maxNodesPerBatchMaximum": "Max nodes per batch must be less than or equal to the maxium batch size {{max}}.",
               "waitBetweenBatchesMinimum": "Wait between batches must be a positive number."
             }
-          },
+          }
+        },
+        "upgradeModal": {
+          "modalTitle": "Upgrade Database",
           "stepper": {
             "dbVersion": "DATABASE VERSION",
             "upgradeMethod": "UPGRADE METHOD",
@@ -345,6 +350,7 @@
               "rolling": "Rolling upgrade",
               "concurrent": "Concurrent upgrade of all nodes."
             },
+            "concurrentUpgradeDowntimeWarning": "<bold>Requires downtime.</bold> The universe will be unavailable while the upgrade is in progress.",
             "recommendationLabel": "Recommendation",
             "recommendationMessage": "PG 15 is a major upgrade with meaningful changes. Canary Upgrade is recommended to limit the impact on the Universe if a rollback is needed."
           },
@@ -391,19 +397,8 @@
           "concurrentRollbackDowntimeWarning": "<bold>Requires downtime.</bold> The universe will be unavailable while the rollback is in progress.",
           "upgradedAzsLabel": "Upgraded AZs:",
           "submitLabel": "Proceed to Roll Back",
-          "rollingOptions": {
-            "maxNodesPerBatch": "Max nodes per batch:",
-            "maxNodesPerBatchTooltip": "Applies to T-Servers.\nMasters are upgraded one at a time.",
-            "waitBetweenBatches": "Wait between batches:",
-            "waitBetweenBatchesTooltip": "Applies between all batches\n(Masters and T-Servers)."
-          },
           "toast": {
             "rollbackFailedLabel": "Rollback request failed"
-          },
-          "validation": {
-            "maxNodesPerBatchMinimum": "Must be at least 1.",
-            "maxNodesPerBatchMaximum": "Must be less than or equal to the maxium batch size {{max}}.",
-            "waitBetweenBatchesMin": "Must be 0 or greater."
           }
         },
         "finalizeModal": {
