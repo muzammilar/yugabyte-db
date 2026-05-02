@@ -1190,7 +1190,8 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
         defaultUniverse.getMasters().size() + defaultUniverse.getTServers().size());
 
     UUID taskUUID = commissioner.submit(TaskType.SoftwareUpgradeYB, taskParams);
-    waitForTask(taskUUID, TaskInfo.State.Paused);
+    TaskInfo taskInfo = waitForTask(taskUUID);
+    assertEquals(TaskInfo.State.Paused, taskInfo.getTaskState());
 
     defaultUniverse = Universe.getOrBadRequest(defaultUniverse.getUniverseUUID());
     assertEquals(
@@ -1207,7 +1208,7 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
         defaultUniverse.getMasters().size() + defaultUniverse.getTServers().size());
 
     UUID resumedUUID = resumeCanaryTask(taskUUID);
-    TaskInfo taskInfo = waitForTask(resumedUUID);
+    taskInfo = waitForTask(resumedUUID);
 
     assertEquals(Success, taskInfo.getTaskState());
     defaultUniverse = Universe.getOrBadRequest(defaultUniverse.getUniverseUUID());
@@ -1271,7 +1272,8 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
         defaultUniverse.getMasters().size() + defaultUniverse.getTServers().size());
 
     UUID taskUUID = commissioner.submit(TaskType.SoftwareUpgradeYB, taskParams);
-    waitForTask(taskUUID, TaskInfo.State.Paused);
+    TaskInfo taskInfo = waitForTask(taskUUID);
+    assertEquals(TaskInfo.State.Paused, taskInfo.getTaskState());
 
     defaultUniverse = Universe.getOrBadRequest(defaultUniverse.getUniverseUUID());
     assertEquals(
@@ -1315,7 +1317,8 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
         defaultUniverse.getMasters().size() + defaultUniverse.getTServers().size());
 
     UUID taskUUID = commissioner.submit(TaskType.SoftwareUpgradeYB, taskParams);
-    waitForTask(taskUUID, TaskInfo.State.Paused);
+    TaskInfo taskInfo = waitForTask(taskUUID);
+    assertEquals(TaskInfo.State.Paused, taskInfo.getTaskState());
 
     defaultUniverse = Universe.getOrBadRequest(defaultUniverse.getUniverseUUID());
     assertEquals(
@@ -1365,7 +1368,8 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
 
     // First run: should pause after az1 tservers.
     UUID taskUUID = commissioner.submit(TaskType.SoftwareUpgradeYB, taskParams);
-    waitForTask(taskUUID, TaskInfo.State.Paused);
+    TaskInfo taskInfo = waitForTask(taskUUID);
+    assertEquals(TaskInfo.State.Paused, taskInfo.getTaskState());
 
     defaultUniverse = Universe.getOrBadRequest(defaultUniverse.getUniverseUUID());
     PrevYBSoftwareConfig prev = defaultUniverse.getUniverseDetails().prevYBSoftwareConfig;
@@ -1381,7 +1385,8 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
 
     // Resume: should pause after az2 tservers.
     UUID resumedUUID = resumeCanaryTask(taskUUID);
-    waitForTask(resumedUUID, TaskInfo.State.Paused);
+    taskInfo = waitForTask(resumedUUID);
+    assertEquals(TaskInfo.State.Paused, taskInfo.getTaskState());
 
     defaultUniverse = Universe.getOrBadRequest(defaultUniverse.getUniverseUUID());
     prev = defaultUniverse.getUniverseDetails().prevYBSoftwareConfig;
@@ -1450,7 +1455,8 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
 
     // First run: should pause after masters.
     UUID taskUUID = commissioner.submit(TaskType.SoftwareUpgradeYB, taskParams);
-    waitForTask(taskUUID, TaskInfo.State.Paused);
+    TaskInfo taskInfo = waitForTask(taskUUID);
+    assertEquals(TaskInfo.State.Paused, taskInfo.getTaskState());
 
     defaultUniverse = Universe.getOrBadRequest(defaultUniverse.getUniverseUUID());
     PrevYBSoftwareConfig prev = defaultUniverse.getUniverseDetails().prevYBSoftwareConfig;
@@ -1468,7 +1474,8 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
 
     // Resume after masters: should pause after az1 tservers.
     UUID resumedUUID = resumeCanaryTask(taskUUID);
-    waitForTask(resumedUUID, TaskInfo.State.Paused);
+    taskInfo = waitForTask(resumedUUID);
+    assertEquals(TaskInfo.State.Paused, taskInfo.getTaskState());
 
     defaultUniverse = Universe.getOrBadRequest(defaultUniverse.getUniverseUUID());
     prev = defaultUniverse.getUniverseDetails().prevYBSoftwareConfig;
