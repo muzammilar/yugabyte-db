@@ -353,13 +353,15 @@
             "stepDescription": "The upgrade runs in a controlled sequence. Add pauses to monitor and evaluate the Universe before proceeding.",
             "upgradeStage": {
               "upgradeMasterServers": "Upgrade Master Servers",
+              "upgradeTservers": "Upgrade T-Servers",
               "upgradePrimaryClusterTServers": "Upgrade Primary Cluster T-Servers",
               "upgradeReadReplicaTServers": "Upgrade Read Replica T-Servers"
             },
             "executionOrder": "Execution Order",
-            "addMonitoringPause": "Add monitoring pause",
+            "addMonitoringPause": "Add Monitoring Pause",
             "pauseToMonitorUpgrade": "Pause to monitor upgrade",
             "pauseAfterFirstAzTooltip": "<bold>Pause after the first AZ</bold> to validate the upgrade on a single AZ and keep a faster rollback path if needed.",
+            "reminder": "Reminder",
             "pauseRequiresManualResume": "Every pause requires you to manually resume the upgrade."
           },
           "upgradePaceStep": {

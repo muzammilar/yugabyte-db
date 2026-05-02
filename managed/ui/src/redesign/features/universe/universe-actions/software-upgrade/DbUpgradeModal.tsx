@@ -51,7 +51,7 @@ const useStyles = makeStyles((theme) => ({
     display: 'flex',
 
     height: '100%',
-    minHeight: 0,
+    minHeight: 760,
     padding: 0
   },
 
@@ -66,7 +66,7 @@ const useStyles = makeStyles((theme) => ({
     flexShrink: 0,
 
     width: 282,
-    height: '100%',
+    minHeight: '100%',
     padding: theme.spacing(2),
 
     overflowY: 'auto',
@@ -83,7 +83,9 @@ const useStyles = makeStyles((theme) => ({
   leftPanel: {
     display: 'flex',
     flexDirection: 'column',
-    flex: 1
+    flex: 1,
+
+    width: 677
   },
   stepperContainer: {
     padding: theme.spacing(2, 3),
@@ -300,7 +302,7 @@ export const DbUpgradeModal = ({
       title={modalTitle}
       submitLabel={submitLabel}
       overrideWidth="1100px"
-      overrideHeight="820px"
+      overrideHeight="fit-content"
       submitTestId={`${MODAL_NAME}-SubmitButton`}
       size="xl"
       dialogContentProps={{ className: classes.modalContainer }}
