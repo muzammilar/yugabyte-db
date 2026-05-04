@@ -848,7 +848,9 @@ class CatalogManager : public CatalogManagerIf, public SnapshotCoordinatorContex
   //
   // Remember that OIDs are cached at TServers so you may want to use InvalidateTserverOidCaches()
   // after calling this function.
-  Status AdvanceOidCounters(const NamespaceId& namespace_id);
+  // Overrides SnapshotCoordinatorContext::AdvanceOidCounters. Also callable directly
+  // from backup/restore and clone paths.
+  Status AdvanceOidCounters(const NamespaceId& namespace_id) override;
 
   // Invalidate all the TServer OID caches in this universe.  After this returns, each TServer cache
   // will be effectively invalidated when that TServer receives a heartbeat response from master.
