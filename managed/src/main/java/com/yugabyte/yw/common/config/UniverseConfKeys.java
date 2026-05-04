@@ -1870,4 +1870,12 @@ public class UniverseConfKeys extends RuntimeConfigKeysModule {
           "Timeout for flushing tablets when stopping tserver",
           ConfDataType.DurationType,
           ImmutableList.of(ConfKeyTags.PUBLIC));
+  public static final ConfKeyInfo<Boolean> multitenancySkipYcqlPrecheck =
+      new ConfKeyInfo<>(
+          "yb.universe.multitenancy_skip_ycql_precheck",
+          ScopeType.UNIVERSE,
+          "Skip YCQL precheck when enabling multi-tenancy",
+          "If this flag is enabled, the precheck that requires YCQL to be disabled is skipped",
+          ConfDataType.BooleanType,
+          ImmutableList.of(ConfKeyTags.PUBLIC));
 }
