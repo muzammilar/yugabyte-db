@@ -88,6 +88,14 @@ const useStyles = makeStyles((theme) => ({
   stepperContainer: {
     padding: theme.spacing(2, 3),
     borderBottom: `1px solid ${theme.palette.grey[200]}`
+  },
+
+  footerAccessory: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+
+    width: '100%'
   }
 }));
 
@@ -291,11 +299,9 @@ export const DbUpgradeModal = ({
     <YBModal
       title={modalTitle}
       submitLabel={submitLabel}
-      cancelLabel={cancelLabel}
       overrideWidth="1100px"
       overrideHeight="820px"
       submitTestId={`${MODAL_NAME}-SubmitButton`}
-      cancelTestId={`${MODAL_NAME}-CancelButton`}
       size="xl"
       dialogContentProps={{ className: classes.modalContainer }}
       onSubmit={formMethods.handleSubmit(handleModalPrimaryButtonClick)}
@@ -303,11 +309,20 @@ export const DbUpgradeModal = ({
       hideCloseBtn={false}
       titleSeparator
       footerAccessory={
-        currentFormStep !== DB_UPGRADE_FIRST_FORM_STEP && (
-          <YBButton variant="secondary" onClick={handleBackNavigation}>
-            {t('back', { keyPrefix: 'common' })}
+        <div className={classes.footerAccessory}>
+          <YBButton variant="secondary" onClick={modalProps.onClose} data-testid={`${MODAL_NAME}-CancelButton`}>
+            {cancelLabel}
           </YBButton>
-        )
+          {currentFormStep !== DB_UPGRADE_FIRST_FORM_STEP && (
+            <YBButton
+              variant="secondary"
+              onClick={handleBackNavigation}
+              data-testid={`${MODAL_NAME}-BackButton`}
+            >
+              {t('back', { keyPrefix: 'common' })}
+            </YBButton>
+          )}
+        </div>
       }
       buttonProps={{
         primary: {
