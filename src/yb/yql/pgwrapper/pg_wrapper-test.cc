@@ -64,6 +64,8 @@ namespace yb {
 namespace pgwrapper {
 namespace {
 
+constexpr std::string_view kPgFlagPrefix = "ysql_";
+
 template<bool Auth, bool Encrypted>
 struct ConnectionStrategy {
   static const bool UseAuth = Auth;
@@ -633,11 +635,10 @@ TEST_F(PgWrapperSingleNodeLongTxnTest, RestartMidApply) {
 class PgWrapperFlagsTest : public PgWrapperTest {
   void ValidateGucValue(
       const string& gflag_name, const string& expected_value, bool check_default_value) {
-    const string pg_flag_prefix = "ysql_";
-    ASSERT_TRUE(gflag_name.starts_with(pg_flag_prefix))
-        << "Flag " << gflag_name << " does not start with prefix " << pg_flag_prefix;
+    ASSERT_TRUE(gflag_name.starts_with(kPgFlagPrefix))
+        << "Flag " << gflag_name << " does not start with prefix " << kPgFlagPrefix;
 
-    auto guc_name = gflag_name.substr(pg_flag_prefix.length());
+    auto guc_name = gflag_name.substr(kPgFlagPrefix.size());
     boost::to_lower(guc_name);
 
     string normalized_expected_value = expected_value;
@@ -661,6 +662,15 @@ class PgWrapperFlagsTest : public PgWrapperTest {
 
   void ValidateCurrentGucValue(const string& gflag_name, const string& expected_value) {
     ValidateGucValue(gflag_name, expected_value, false /* check_default_value */);
+  }
+
+  // Returns the lowercased names of all GUCs visible in pg_settings. Hidden GUCs
+  // (those tagged GUC_NO_SHOW_ALL) are excluded from this view.
+  Result<std::unordered_set<string>> GetVisibleGucNames() {
+    auto conn = VERIFY_RESULT(ConnectToDB(/* dbname= */ ""));
+    auto rows = VERIFY_RESULT(
+        conn.FetchRows<std::string>("SELECT LOWER(name) FROM pg_settings"));
+    return std::unordered_set<string>(rows.begin(), rows.end());
   }
 
   void ValidateGucIsRuntime(const string& guc_name, const bool runtime_expected) {
@@ -736,6 +746,10 @@ TEST_F(PgWrapperFlagsTest, VerifyGFlagDefaults) {
   vector<CommandLineFlagInfo> flags;
   GetAllFlags(&flags);
 
+  // Cache pg_settings names so we can verify hidden flags are not discoverable
+  // without spawning a psql process per flag.
+  const auto visible_guc_names = ASSERT_RESULT(GetVisibleGucNames());
+
   for (const CommandLineFlagInfo& flag : flags) {
     std::unordered_set<FlagTag> tags;
     GetFlagTags(flag.name, &tags);
@@ -743,8 +757,13 @@ TEST_F(PgWrapperFlagsTest, VerifyGFlagDefaults) {
       continue;
     }
     // Hidden gFlags use GUC_NO_SHOW_ALL on the corresponding GUC, which excludes them from
-    // pg_settings, so ValidateDefaultGucValue cannot read boot_val.
+    // pg_settings. Verify each hidden flag is not discoverable, then skip the boot_val
+    // comparison since boot_val cannot be read for GUCs with GUC_NO_SHOW_ALL.
     if (tags.contains(FlagTag::kHidden)) {
+      const auto guc_name = flag.name.substr(kPgFlagPrefix.size());
+      EXPECT_FALSE(visible_guc_names.contains(guc_name))
+          << "Hidden flag " << flag.name << " has a discoverable GUC '" << guc_name
+          << "' in pg_settings; the GUC definition is missing GUC_NO_SHOW_ALL.";
       continue;
     }
 
@@ -771,7 +790,6 @@ TEST_F(PgWrapperFlagsTest, YB_DISABLE_TEST_IN_TSAN(VerifyGFlagRuntimeTag)) {
   vector<CommandLineFlagInfo> flags;
   GetAllFlags(&flags);
 
-  const string pg_flag_prefix = "ysql_";
   for (const CommandLineFlagInfo& flag : flags) {
     std::unordered_set<FlagTag> tags;
     GetFlagTags(flag.name, &tags);
@@ -784,10 +802,10 @@ TEST_F(PgWrapperFlagsTest, YB_DISABLE_TEST_IN_TSAN(VerifyGFlagRuntimeTag)) {
       continue;
     }
 
-    ASSERT_TRUE(flag.name.starts_with(pg_flag_prefix))
-        << "Flag " << flag.name << " does not start with prefix " << pg_flag_prefix;
+    ASSERT_TRUE(flag.name.starts_with(kPgFlagPrefix))
+        << "Flag " << flag.name << " does not start with prefix " << kPgFlagPrefix;
 
-    auto guc_name = flag.name.substr(pg_flag_prefix.length());
+    auto guc_name = flag.name.substr(kPgFlagPrefix.size());
     boost::to_lower(guc_name);
 
     ValidateGucIsRuntime(guc_name, tags.contains(FlagTag::kRuntime));
