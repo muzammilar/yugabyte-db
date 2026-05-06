@@ -424,6 +424,7 @@
             "rollBack": "Roll Back",
             "resumeUpgrade": "Resume Upgrade",
             "finalizeUpgradeNow": "Finalize Upgrade Now",
+            "readReplicaTag": "Read Replica",
             "temporaryRestrictions": {
               "tag": "Temporary Restrictions",
               "ddlAndSomeOperationsBlockedForUpgrade": "DDLs and <dbUpgradeImpactDocLink>some operations</dbUpgradeImpactDocLink> are blocked and will remain unavailable until the upgrade is finalized or rolled back.",

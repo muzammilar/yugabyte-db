@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { yba } from '@yugabyte-ui-library/core';
+import { yba, YBTag } from '@yugabyte-ui-library/core';
 import { makeStyles, Typography } from '@material-ui/core';
 import clsx from 'clsx';
 import { Trans, useTranslation } from 'react-i18next';
@@ -7,9 +7,9 @@ import { AxiosError } from 'axios';
 import { useQueryClient } from 'react-query';
 
 import { CanaryPauseState, Task } from '@app/redesign/features/tasks/dtos';
-import { getPrimaryCluster } from '@app/redesign/utils/universeUtils';
+import { getPrimaryCluster, getReadOnlyCluster } from '@app/redesign/utils/universeUtils';
 import { formatYbSoftwareVersionString } from '@app/utils/Formatters';
-import { Universe, YBATaskRespResponse } from '@app/v2/api/yugabyteDBAnywhereV2APIs.schemas';
+import { Universe } from '@app/v2/api/yugabyteDBAnywhereV2APIs.schemas';
 import { getPlacementAzMetadataList } from '../utils/formUtils';
 import { AccordionCard, AccordionCardState } from './AccordionCard';
 import { AssessPerformancePrompt } from './AssessPerformancePrompt';
@@ -22,7 +22,6 @@ import { DbUpgradeRollBackModal } from '../DbUpgradeRollBackModal';
 import { DbUpgradeFinalizeModal } from '../DbUpgradeFinalizeModal';
 import { useResumeCanarySoftwareUpgrade } from '@app/v2/api/universe/universe';
 import { handleServerError } from '@app/utils/errorHandlingUtils';
-import { universeQueryKey } from '@app/redesign/helpers/api';
 import { ApiPermissionMap } from '@app/redesign/features/rbac/ApiAndUserPermMapping';
 import { RbacValidator } from '@app/redesign/features/rbac/common/RbacApiPermValidator';
 import { useRefreshSoftwareUpgradeTasksCache } from '@app/redesign/helpers/cacheUtils';
@@ -70,6 +69,9 @@ const useStyles = makeStyles((theme) => ({
     display: 'flex',
     justifyContent: 'flex-end',
     gap: theme.spacing(1)
+  },
+  headerAccessoriesSection: {
+    marginLeft: theme.spacing(1)
   }
 }));
 
@@ -83,7 +85,6 @@ export const DbUpgradeProgressPanel = ({
   const [isDbUpgradeRollbackModalOpen, setIsDbUpgradeRollbackModalOpen] = useState(false);
   const [isDbUpgradeFinalizeModalOpen, setIsDbUpgradeFinalizeModalOpen] = useState(false);
   const classes = useStyles();
-  const queryClient = useQueryClient();
   const universeUuid = universe?.info?.universe_uuid ?? '';
   const refreshSoftwareUpgradeTasksCache = useRefreshSoftwareUpgradeTasksCache(universeUuid);
   const { t } = useTranslation('translation', {
@@ -141,11 +142,12 @@ export const DbUpgradeProgressPanel = ({
   const tserverAZUpgradeStatesList =
     dbUpgradeTask?.softwareUpgradeProgress?.tserverAZUpgradeStatesList;
 
-  const upgradedAzMetadataList =
-    getPlacementAzMetadataList(getPrimaryCluster(universe?.spec?.clusters ?? [])) ?? [];
+  const clusters = universe?.spec?.clusters ?? [];
+  const upgradedAzMetadataList = getPlacementAzMetadataList(getPrimaryCluster(clusters)) ?? [];
   const upgradedAzDisplayNameByUuid = Object.fromEntries(
     upgradedAzMetadataList.map((az) => [az.azUuid, az.displayName])
   );
+  const readReplicaClusterUuid = getReadOnlyCluster(clusters)?.uuid;
   const upgradeAzStageCount = tserverAZUpgradeStatesList?.length ?? 0;
   const { preCheckStage, upgradeMasterServersStage, upgradeAzStages, finalizeStage } =
     classifyDbUpgradeStages(dbUpgradeTask);
@@ -242,6 +244,16 @@ export const DbUpgradeProgressPanel = ({
             })}
             stepNumber={TSERVER_AZ_UPGRADE_STAGE_START_INDEX + index}
             state={cardState}
+            headerAccessories={
+              readReplicaClusterUuid &&
+              azUpgradeState.clusterUUID === readReplicaClusterUuid ? (
+                <div className={classes.headerAccessoriesSection}>
+                  <YBTag size="medium" variant="dark">
+                    {t('readReplicaTag')}
+                  </YBTag>
+                </div>
+              ) : undefined
+            }
           >
             <Typography variant="subtitle1" className={classes.infoText}>
               <Trans
