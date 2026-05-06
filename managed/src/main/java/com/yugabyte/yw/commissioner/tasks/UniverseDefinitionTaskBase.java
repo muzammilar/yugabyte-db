@@ -2490,8 +2490,6 @@ public abstract class UniverseDefinitionTaskBase extends UniverseTaskBase {
       @Nullable Consumer<AnsibleSetupServer.Params> setupParamsCustomizer) {
 
     UserIntent userIntent = universe.getUniverseDetails().getPrimaryCluster().userIntent;
-    // Must use ansible provisioning for non-systemd universes
-    Customer customer = Customer.get(universe.getCustomerId());
     boolean isUniverseManuallyProvisioned = Util.isOnPremManualProvisioning(universe);
     // Determine the starting state of the nodes and invoke the callback if
     // ignoreNodeStatus is not set.
