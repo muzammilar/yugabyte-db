@@ -16,7 +16,7 @@ import { AssessPerformancePrompt } from './AssessPerformancePrompt';
 import { UpgradeStageCategory } from './constants';
 import { PreCheckStageBanner } from './PreCheckStageBanner';
 import { UpgradeStageBanner } from './UpgradeStageBanner';
-import { classifyDbUpgradeStages } from './utils';
+import { classifyDbUpgradeStages, getTserverAzClusterUpgradeStageKey } from './utils';
 import { TemporaryRestrictionsNotice } from './TemporaryRestrictionsNotice';
 import { DbUpgradeRollBackModal } from '../DbUpgradeRollBackModal';
 import { DbUpgradeFinalizeModal } from '../DbUpgradeFinalizeModal';
@@ -229,7 +229,11 @@ export const DbUpgradeProgressPanel = ({
         )}
       </AccordionCard>
       {(tserverAZUpgradeStatesList ?? []).map((azUpgradeState, index) => {
-        const azUpgradeStagePresentation = upgradeAzStages[azUpgradeState.azUUID];
+        const tserverAzClusterStageKey = getTserverAzClusterUpgradeStageKey(
+          azUpgradeState.azUUID,
+          azUpgradeState.clusterUUID
+        );
+        const azUpgradeStagePresentation = upgradeAzStages[tserverAzClusterStageKey];
         const cardState =
           azUpgradeStagePresentation?.accordionCardState ?? AccordionCardState.NEUTRAL;
         const isPausedAfterSuccessfulUpgrade =
@@ -238,7 +242,7 @@ export const DbUpgradeProgressPanel = ({
           azUpgradeStagePresentation?.isLastAzBeforeCanaryPause;
         return (
           <AccordionCard
-            key={azUpgradeState.azUUID}
+            key={tserverAzClusterStageKey}
             title={t('upgradeAzStage.title', {
               azLabel: upgradedAzDisplayNameByUuid[azUpgradeState.azUUID] ?? azUpgradeState.azName
             })}
@@ -279,7 +283,7 @@ export const DbUpgradeProgressPanel = ({
                   <YBButton
                     variant="secondary"
                     onClick={handleRollbackUpgrade}
-                    dataTestId={`roll-back-upgrade-button-tserverAz-${azUpgradeState.azUUID}`}
+                    dataTestId={`roll-back-upgrade-button-tserverAz-${tserverAzClusterStageKey}`}
                   >
                     {t('rollBack')}
                   </YBButton>
@@ -289,7 +293,7 @@ export const DbUpgradeProgressPanel = ({
                     variant="ybaPrimary"
                     onClick={handleResumeUpgrade}
                     disabled={resumeUpgradeMutation.isLoading}
-                    dataTestId={`resume-upgrade-button-tserverAz-${azUpgradeState.azUUID}`}
+                    dataTestId={`resume-upgrade-button-tserverAz-${tserverAzClusterStageKey}`}
                   >
                     {t('resumeUpgrade')}
                   </YBButton>

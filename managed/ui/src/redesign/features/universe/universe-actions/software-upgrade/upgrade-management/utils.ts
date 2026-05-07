@@ -7,6 +7,12 @@ import {
 } from '@app/redesign/features/tasks/dtos';
 import { AccordionCardState } from './AccordionCard';
 
+/** Returns a unique key for a t-server AZ upgrade stage. 
+ * Just using azUuid is not enough because the same AZ UUID can appear on multiple clusters.
+ */
+export const getTserverAzClusterUpgradeStageKey = (azUUID: string, clusterUUID: string): string =>
+  `${azUUID}|${clusterUUID}`;
+
 const mapAzUpgradeStatusToAccordionCardState = (status: AZUpgradeStatus): AccordionCardState => {
   switch (status) {
     case AZUpgradeStatus.NOT_STARTED:
@@ -97,6 +103,7 @@ export interface AzUpgradeStageMetadata {
 export interface DbUpgradeStagesMetadata {
   preCheckStage: AccordionCardState;
   upgradeMasterServersStage: AccordionCardState;
+  /** Keys from {@link getTserverAzClusterUpgradeStageKey}(azUUID, clusterUUID). */
   upgradeAzStages: Record<string, AzUpgradeStageMetadata>;
   finalizeStage: AccordionCardState;
 }
@@ -107,7 +114,7 @@ export type DbUpgradeStages = DbUpgradeStagesMetadata;
  * Classifies a DB software-upgrade task into accordion card states for the progress panel.
  
  * Assumptions:
- * - tserverAzUpgradeStatesList returned by the backend is ordered by AZ upgrade order.
+ * - tserverAZUpgradeStatesList returned by the backend is ordered by upgrade order (may repeat the same AZ UUID across clusters).
  */
 export const classifyDbUpgradeStages = (dbUpgradeTask: Task): DbUpgradeStagesMetadata => {
   if (!dbUpgradeTask.softwareUpgradeProgress) {
@@ -129,17 +136,21 @@ export const classifyDbUpgradeStages = (dbUpgradeTask: Task): DbUpgradeStagesMet
 
   const tserverAZUpgradeStatesList = softwareUpgradeProgress.tserverAZUpgradeStatesList ?? [];
   const upgradeAzStages: Record<string, AzUpgradeStageMetadata> = {};
-  let lastCompletedTserverAzUUID: string | undefined;
+  let lastCompletedTserverStageKey: string | undefined;
   let hasNotStartedTserverAz = false;
 
   for (const azUpgradeState of tserverAZUpgradeStatesList) {
     if (azUpgradeState.status === AZUpgradeStatus.NOT_STARTED) {
       hasNotStartedTserverAz = true;
     }
+    const stageKey = getTserverAzClusterUpgradeStageKey(
+      azUpgradeState.azUUID,
+      azUpgradeState.clusterUUID
+    );
     if (azUpgradeState.status === AZUpgradeStatus.COMPLETED) {
-      lastCompletedTserverAzUUID = azUpgradeState.azUUID;
+      lastCompletedTserverStageKey = stageKey;
     }
-    upgradeAzStages[azUpgradeState.azUUID] = {
+    upgradeAzStages[stageKey] = {
       accordionCardState: mapAzUpgradeStatusToAccordionCardState(azUpgradeState.status),
       isLastAzBeforeCanaryPause: false
     };
@@ -148,9 +159,9 @@ export const classifyDbUpgradeStages = (dbUpgradeTask: Task): DbUpgradeStagesMet
   if (
     softwareUpgradeProgress.canaryPauseState === CanaryPauseState.PAUSED_AFTER_TSERVERS_AZ &&
     hasNotStartedTserverAz &&
-    lastCompletedTserverAzUUID !== undefined
+    lastCompletedTserverStageKey !== undefined
   ) {
-    const azUpgradeStageMetadata = upgradeAzStages[lastCompletedTserverAzUUID];
+    const azUpgradeStageMetadata = upgradeAzStages[lastCompletedTserverStageKey];
     if (azUpgradeStageMetadata) {
       azUpgradeStageMetadata.isLastAzBeforeCanaryPause = true;
     }

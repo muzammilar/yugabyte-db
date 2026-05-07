@@ -13,10 +13,17 @@ import {
   type Task
 } from '@app/redesign/features/tasks/dtos';
 import { AccordionCardState } from './AccordionCard';
-import { classifyDbUpgradeStages, type DbUpgradeStages } from './utils';
+import {
+  classifyDbUpgradeStages,
+  getTserverAzClusterUpgradeStageKey,
+  type DbUpgradeStages
+} from './utils';
 
 describe('classifyDbUpgradeStages', () => {
   const clusterUUID = 'cluster-uuid';
+
+  const tserverStageKey = (azUUID: string, clusterId: string = clusterUUID) =>
+    getTserverAzClusterUpgradeStageKey(azUUID, clusterId);
 
   const createSoftwareUpgradeProgress = (
     partial: Partial<SoftwareUpgradeProgress> = {}
@@ -164,12 +171,48 @@ describe('classifyDbUpgradeStages', () => {
         )
       );
 
-      expect(result.upgradeAzStages['az-west']).toEqual({
+      expect(result.upgradeAzStages[tserverStageKey('az-west')]).toEqual({
         accordionCardState: AccordionCardState.IN_PROGRESS,
         isLastAzBeforeCanaryPause: false
       });
-      expect(result.upgradeAzStages['az-east']).toEqual({
+      expect(result.upgradeAzStages[tserverStageKey('az-east')]).toEqual({
         accordionCardState: AccordionCardState.SUCCESS,
+        isLastAzBeforeCanaryPause: false
+      });
+    });
+
+    it('keeps each AZ+cluster row independent when the same AZ UUID appears on multiple clusters', () => {
+      const primaryClusterUUID = 'primary-cluster';
+      const readReplicaClusterUUID = 'read-replica-cluster';
+      const sharedAzUUID = 'shared-az-uuid';
+
+      const result = classifyDbUpgradeStages(
+        createDbUpgradeTask(
+          createSoftwareUpgradeProgress({
+            tserverAZUpgradeStatesList: [
+              createDbUpgradeMockAzUpgradeState(
+                sharedAzUUID,
+                AZUpgradeStatus.IN_PROGRESS,
+                ServerType.TSERVER,
+                primaryClusterUUID
+              ),
+              createDbUpgradeMockAzUpgradeState(
+                sharedAzUUID,
+                AZUpgradeStatus.NOT_STARTED,
+                ServerType.TSERVER,
+                readReplicaClusterUUID
+              )
+            ]
+          })
+        )
+      );
+
+      expect(result.upgradeAzStages[tserverStageKey(sharedAzUUID, primaryClusterUUID)]).toEqual({
+        accordionCardState: AccordionCardState.IN_PROGRESS,
+        isLastAzBeforeCanaryPause: false
+      });
+      expect(result.upgradeAzStages[tserverStageKey(sharedAzUUID, readReplicaClusterUUID)]).toEqual({
+        accordionCardState: AccordionCardState.NEUTRAL,
         isLastAzBeforeCanaryPause: false
       });
     });
@@ -192,7 +235,7 @@ describe('classifyDbUpgradeStages', () => {
           )
         );
 
-        expect(result.upgradeAzStages['single-az']).toEqual({
+        expect(result.upgradeAzStages[tserverStageKey('single-az')]).toEqual({
           accordionCardState: expectedAccordionState,
           isLastAzBeforeCanaryPause: false
         });
@@ -221,7 +264,7 @@ describe('classifyDbUpgradeStages', () => {
         )
       );
 
-      expect(result.upgradeAzStages['az-x']).toEqual({
+      expect(result.upgradeAzStages[tserverStageKey('az-x')]).toEqual({
         accordionCardState: AccordionCardState.NEUTRAL,
         isLastAzBeforeCanaryPause: false
       });
@@ -241,15 +284,15 @@ describe('classifyDbUpgradeStages', () => {
         )
       );
 
-      expect(result.upgradeAzStages['az-first']).toEqual({
+      expect(result.upgradeAzStages[tserverStageKey('az-first')]).toEqual({
         accordionCardState: AccordionCardState.SUCCESS,
         isLastAzBeforeCanaryPause: false
       });
-      expect(result.upgradeAzStages['az-boundary']).toEqual({
+      expect(result.upgradeAzStages[tserverStageKey('az-boundary')]).toEqual({
         accordionCardState: AccordionCardState.SUCCESS,
         isLastAzBeforeCanaryPause: true
       });
-      expect(result.upgradeAzStages['az-rest']).toEqual({
+      expect(result.upgradeAzStages[tserverStageKey('az-rest')]).toEqual({
         accordionCardState: AccordionCardState.NEUTRAL,
         isLastAzBeforeCanaryPause: false
       });
@@ -268,7 +311,7 @@ describe('classifyDbUpgradeStages', () => {
         )
       );
 
-      expect(result.upgradeAzStages['az-a']?.isLastAzBeforeCanaryPause).toBe(false);
+      expect(result.upgradeAzStages[tserverStageKey('az-a')]?.isLastAzBeforeCanaryPause).toBe(false);
     });
 
     it('does not mark a pause boundary when every t-server AZ has completed', () => {
@@ -284,8 +327,8 @@ describe('classifyDbUpgradeStages', () => {
         )
       );
 
-      expect(result.upgradeAzStages['az-a']?.isLastAzBeforeCanaryPause).toBe(false);
-      expect(result.upgradeAzStages['az-b']?.isLastAzBeforeCanaryPause).toBe(false);
+      expect(result.upgradeAzStages[tserverStageKey('az-a')]?.isLastAzBeforeCanaryPause).toBe(false);
+      expect(result.upgradeAzStages[tserverStageKey('az-b')]?.isLastAzBeforeCanaryPause).toBe(false);
     });
   });
 
