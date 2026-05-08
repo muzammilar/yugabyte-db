@@ -379,6 +379,7 @@ externalResolvers := {
   versionGenerate.value
   compileYbaCliBinary.value
   downloadThirdPartyDeps.value
+  releaseModulesLocally.value
 }
 
 clean := (clean dependsOn cleanV2ServerStubs).value
@@ -450,7 +451,7 @@ buildDependentArtifacts / fileInputs += baseDirectory.value.toGlob /
   "node-agent/**"
 buildDependentArtifacts / fileInputExcludeFilter :=
   ((path: java.nio.file.Path, attributes: FileAttributes) => {
-    ".*(generated|target|third-party|pywheels|build|version_metadata).*".r.pattern.matcher(path.toString).matches
+    ".*(generated|target|third-party|build|version_metadata).*".r.pattern.matcher(path.toString).matches
    })
 buildDependentArtifacts := {
   (Compile / openApiProcessServer).value
