@@ -28277,6 +28277,7 @@
           "type" : "string"
         },
         "platformUrl" : {
+          "readOnly" : true,
           "type" : "string"
         },
         "prevYBSoftwareConfig" : {
@@ -28796,7 +28797,6 @@
       "required" : [
         "clusters",
         "creatingUser",
-        "platformUrl",
         "sleepAfterMasterRestartMillis",
         "sleepAfterTServerRestartMillis"
       ],
