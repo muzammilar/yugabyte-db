@@ -204,7 +204,6 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
             false)
         .addSimultaneousTasks(TaskType.CheckSoftwareVersion, defaultUniverse.getTServers().size())
         .addTasks(TaskType.PromoteAutoFlags)
-        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateSoftwareVersion)
         .addTasks(TaskType.UpdateUniverseState)
         .verifyTasks(taskInfo.getSubTasks());
@@ -321,8 +320,8 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
             false)
         .addSimultaneousTasks(TaskType.CheckSoftwareVersion, defaultUniverse.getTServers().size())
         .addTasks(TaskType.PromoteAutoFlags)
-        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateSoftwareVersion)
+        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateUniverseState)
         .addTasks(TaskType.PromoteAutoFlags)
         .addTasks(TaskType.RunYsqlUpgrade)
@@ -382,8 +381,8 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
             false)
         .addSimultaneousTasks(TaskType.CheckSoftwareVersion, defaultUniverse.getTServers().size())
         .addTasks(TaskType.PromoteAutoFlags)
-        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateSoftwareVersion)
+        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateUniverseState)
         .verifyTasks(taskInfo.getSubTasks());
 
@@ -463,8 +462,8 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
             false)
         .addSimultaneousTasks(TaskType.CheckSoftwareVersion, defaultUniverse.getTServers().size())
         .addTasks(TaskType.PromoteAutoFlags)
-        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateSoftwareVersion)
+        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateUniverseState)
         .verifyTasks(taskInfo.getSubTasks());
 
@@ -519,8 +518,8 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
             false)
         .addSimultaneousTasks(TaskType.CheckSoftwareVersion, defaultUniverse.getTServers().size())
         .addTasks(TaskType.PromoteAutoFlags)
-        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateSoftwareVersion)
+        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateUniverseState)
         .verifyTasks(taskInfo.getSubTasks());
 
@@ -626,7 +625,6 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
             TaskType.AnsibleConfigureServers, defaultUniverse.getTServers().size())
         .addSimultaneousTasks(TaskType.CheckSoftwareVersion, defaultUniverse.getTServers().size())
         .addTasks(TaskType.PromoteAutoFlags)
-        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateSoftwareVersion)
         .addTasks(TaskType.UpdateUniverseState)
         .verifyTasks(taskInfo.getSubTasks());
@@ -744,7 +742,6 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
             TaskType.AnsibleConfigureServers, defaultUniverse.getTServers().size())
         .addSimultaneousTasks(TaskType.CheckSoftwareVersion, defaultUniverse.getTServers().size())
         .addTasks(TaskType.PromoteAutoFlags)
-        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateSoftwareVersion)
         .addTasks(TaskType.UpdateUniverseState)
         .verifyTasks(taskInfo.getSubTasks());
@@ -887,7 +884,6 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
             TaskType.AnsibleConfigureServers, defaultUniverse.getTServers().size())
         .addSimultaneousTasks(TaskType.CheckSoftwareVersion, defaultUniverse.getTServers().size())
         .addTasks(TaskType.PromoteAutoFlags)
-        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateSoftwareVersion)
         .addTasks(TaskType.UpdateUniverseState)
         .verifyTasks(taskInfo.getSubTasks());
@@ -1082,8 +1078,8 @@ public class SoftwareUpgradeYBTest extends UpgradeTaskTest {
             tserverNames)
         .addSimultaneousTasks(TaskType.CheckSoftwareVersion, defaultUniverse.getTServers().size())
         .addTasks(TaskType.PromoteAutoFlags)
-        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateSoftwareVersion)
+        .addTasks(TaskType.SaveSoftwareUpgradeProgress)
         .addTasks(TaskType.UpdateUniverseState)
         .verifyTasks(taskInfo.getSubTasks());
     assertTrue(defaultUniverse.getUniverseDetails().isSoftwareRollbackAllowed);
