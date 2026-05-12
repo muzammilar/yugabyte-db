@@ -1346,6 +1346,7 @@ CREATE TABLE public.stats_tbl (
     CONSTRAINT stats_tbl_pkey PRIMARY KEY((id) HASH)
 )
 SPLIT INTO 2 TABLETS;
+ALTER TABLE public.stats_tbl SET (yb_presplit='2');
 
 
 \if :use_roles
