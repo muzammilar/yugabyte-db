@@ -8972,7 +8972,9 @@ void CatalogManager::NotifyPrepareDeleteTransactionTabletFinished(
   }
 
   // Transaction tablets have no data, so don't try to delete data.
-  DeleteTabletReplicas(tablet, msg, hide_only, KeepData::kTrue, epoch);
+  DeleteTabletReplicas(
+      tablet, msg, hide_only, KeepData::kTrue,
+      TransactionId::Nil() /* exclude_aborting_transaction_id */, epoch);
 }
 
 void CatalogManager::NotifyTabletDeleteFinished(
@@ -11377,6 +11379,7 @@ Status CatalogManager::SendSplitTabletRequest(
 
 void CatalogManager::DeleteTabletReplicas(
     const TabletInfoPtr& tablet, const std::string& msg, HideOnly hide_only, KeepData keep_data,
+    const TransactionId& exclude_aborting_transaction_id,
     const LeaderEpoch& epoch) {
   auto locations = tablet->GetReplicaLocations();
   LOG(INFO) << "Sending DeleteTablet for " << locations->size()
@@ -11384,7 +11387,7 @@ void CatalogManager::DeleteTabletReplicas(
   for (const auto& [ts_uuid, _] : *locations) {
     SendDeleteTabletRequest(
         tablet->tablet_id(), TABLET_DATA_DELETED, std::nullopt, tablet->table(), ts_uuid, msg,
-        epoch, hide_only, keep_data);
+        epoch, hide_only, keep_data, exclude_aborting_transaction_id);
   }
 }
 
@@ -11426,7 +11429,16 @@ Status CatalogManager::DeleteOrHideTabletsOfTable(
 
   string deletion_msg = "Table deleted at " + LocalTimeAsString();
 
-  RETURN_NOT_OK(DeleteOrHideTabletsAndSendRequests(tablets, delete_retainer, deletion_msg, epoch));
+  TransactionId exclude_abort_txn_id = TransactionId::Nil();
+  if (FLAGS_ysql_yb_enable_ddl_savepoint_support) {
+    TransactionId txn_id_on_table = TransactionId::Nil();
+    if (IsTableDeletionDueToRollbackToSubTxn(&table_info, txn_id_on_table)) {
+      exclude_abort_txn_id = txn_id_on_table;
+    }
+  }
+
+  RETURN_NOT_OK(DeleteOrHideTabletsAndSendRequests(
+      tablets, delete_retainer, deletion_msg, epoch, exclude_abort_txn_id));
 
   if (table_info.IsColocatedDbParentTable()) {
     LockGuard lock(mutex_);
@@ -11442,7 +11454,8 @@ Status CatalogManager::DeleteOrHideTabletsOfTable(
 
 Status CatalogManager::DeleteOrHideTabletsAndSendRequests(
     const TabletInfos& tablets, const TabletDeleteRetainerInfo& delete_retainer,
-    const std::string& reason, const LeaderEpoch& epoch) {
+    const std::string& reason, const LeaderEpoch& epoch,
+    TransactionId exclude_abort_txn_id) {
   const auto hide_only = HideOnly(delete_retainer.IsHideOnly());
 
   struct TabletData {
@@ -11518,7 +11531,8 @@ Status CatalogManager::DeleteOrHideTabletsAndSendRequests(
       RETURN_NOT_OK(SendPrepareDeleteTransactionTabletRequest(
           tablet, leader->permanent_uuid(), reason, hide_only, epoch));
     } else {
-      DeleteTabletReplicas(tablet, reason, hide_only, KeepData::kFalse, epoch);
+      DeleteTabletReplicas(
+          tablet, reason, hide_only, KeepData::kFalse, exclude_abort_txn_id, epoch);
     }
   }
 
@@ -11547,7 +11561,8 @@ void CatalogManager::SendDeleteTabletRequest(
     const TabletId& tablet_id, TabletDataState delete_type,
     const std::optional<int64_t>& cas_config_opid_index_less_or_equal,
     const scoped_refptr<TableInfo>& table, const std::string& ts_uuid, const string& reason,
-    const LeaderEpoch& epoch, HideOnly hide_only, KeepData keep_data) {
+    const LeaderEpoch& epoch, HideOnly hide_only, KeepData keep_data,
+    const TransactionId& exclude_aborting_transaction_id) {
   if (PREDICT_FALSE(FLAGS_TEST_disable_tablet_deletion)) {
     return;
   }
@@ -11565,11 +11580,13 @@ void CatalogManager::SendDeleteTabletRequest(
   if (keep_data) {
     call->set_keep_data(keep_data);
   }
+  if (!exclude_aborting_transaction_id.IsNil()) {
+    call->set_exclude_aborting_transaction_id(exclude_aborting_transaction_id);
+  }
   if (table != nullptr) {
     table->AddTask(call);
-    TransactionId txn_id = TransactionId::Nil();
-    if (IsTableDeletionDueToRollbackToSubTxn(table, txn_id)) {
-      call->set_exclude_aborting_transaction_id(txn_id);
+    if (table->is_index()) {
+      TEST_SYNC_POINT("CatalogManager::SendDeleteTabletRequest:IndexTable");
     }
   }
 
@@ -11946,8 +11963,11 @@ Status CatalogManager::ProcessPendingAssignmentsPerTable(
   for (const TabletInfoPtr& tablet : deferred.modified_tablets) {
     if (tablet->metadata().dirty().is_deleted()) {
       // Actual delete, because we delete tablet replica.
+      // The table isn't getting deleted, so we don't need to exclude any transactions from
+      // aborting. Hence, we pass TransactionId::Nil() here.
       DeleteTabletReplicas(tablet, tablet->metadata().dirty().pb.state_msg(), HideOnly::kFalse,
-                           KeepData::kFalse, epoch);
+                           KeepData::kFalse,
+                           TransactionId::Nil() /* exclude_aborting_transaction_id */, epoch);
     }
   }
   // Send the CreateTablet() requests to the servers. This is asynchronous / non-blocking.
@@ -13536,6 +13556,7 @@ void CatalogManager::CheckTableDeleted(const TableInfoPtr& table, const LeaderEp
     if (!transaction_id.IsNil()) {
       TEST_SYNC_POINT("CatalogManager::CheckTableDeleted:BeforeRemoveDdlTransactionState");
       RemoveDdlTransactionState(table->id(), {transaction_id});
+      TEST_SYNC_POINT("CatalogManager::CheckTableDeleted:AfterRemoveDdlTransactionState");
     }
   }), "Failed to submit update table task");
 }
