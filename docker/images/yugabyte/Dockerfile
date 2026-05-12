@@ -136,6 +136,12 @@ RUN set -x; \
               --no-user-group yugabyte; \
     fi
 
+# Create with correct permissions the openssl-config directory which will be used for fips
+# credentials generated via post-install.sh
+RUN mkdir -p $YB_HOME/openssl-config \
+    && chown -R 10001:0 $YB_HOME/openssl-config \
+    && chmod -R g=u $YB_HOME/openssl-config
+
 COPY --from=intermediate $YB_HOME $YB_HOME
 
 RUN for a in ysqlsh ycqlsh yugabyted yb-admin yb-tsi-cli; do \
