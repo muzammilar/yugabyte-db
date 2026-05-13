@@ -13,7 +13,6 @@ import { AZUpgradeStatus, TaskState, TaskType } from '@app/redesign/features/tas
 import { useRefreshUniverseTasksCache } from '@app/redesign/helpers/cacheUtils';
 import { api, taskQueryKey, universeQueryKey } from '@app/redesign/helpers/api';
 import { SortDirection } from '@app/redesign/utils/dtos';
-import { getPrimaryCluster } from '@app/redesign/utils/universeUtils';
 import { handleServerError } from '@app/utils/errorHandlingUtils';
 import { formatYbSoftwareVersionString } from '@app/utils/Formatters';
 import { getUniverse, rollbackSoftwareUpgrade } from '@app/v2/api/universe/universe';
@@ -23,7 +22,7 @@ import type {
 } from '@app/v2/api/yugabyteDBAnywhereV2APIs.schemas';
 import { RollingUpdateBatchSettings } from './components/RollingUpdateBatchSettings';
 import { UpgradePace } from './constants';
-import { getPlacementAzMetadataList } from './utils/formUtils';
+import { getPlacementAzDisplayNameForCluster } from './utils/formUtils';
 import { getTaskSoftwareUpgradeProgress } from './upgrade-management/utils';
 import { fetchTaskUntilItCompletes } from '@app/actions/xClusterReplication';
 
@@ -192,18 +191,19 @@ export const DbUpgradeRollBackModal = ({
   const universe = universeDetailsQuery.data;
   const prevVersion = universe?.info?.previous_yb_software_details?.yb_software_version ?? '';
   const maxNodesPerBatchMaximum = universe?.info?.roll_max_batch_size?.primary_batch_size ?? 1;
-  const upgradedAzMetadataList =
-    getPlacementAzMetadataList(getPrimaryCluster(universe?.spec?.clusters ?? [])) ?? [];
-  const upgradedAzDisplayNameByUuid = Object.fromEntries(
-    upgradedAzMetadataList.map((az) => [az.azUuid, az.displayName])
-  );
+  const clusters = universe?.spec?.clusters ?? [];
 
   const upgradedAzs =
     getTaskSoftwareUpgradeProgress(latestSoftwareUpgradeTask)
       ?.tserverAZUpgradeStatesList?.filter((az) => az.status === AZUpgradeStatus.COMPLETED)
       .map((az) => ({
         azUuid: az.azUUID,
-        displayName: upgradedAzDisplayNameByUuid[az.azUUID] ?? az.azName ?? az.azUUID
+        displayName: getPlacementAzDisplayNameForCluster(
+          clusters,
+          az.clusterUUID,
+          az.azUUID,
+          az.azName ?? az.azUUID
+        )
       })) ?? [];
 
   const formMethods = useForm<DbUpgradeRollBackFormFields>({

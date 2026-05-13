@@ -285,6 +285,22 @@
             }
           }
         },
+        "clusterWidget": {
+          "version": "Version",
+          "upgradeAvailable": "Upgrade Available",
+          "upgradingTo": "Upgrading to {{version}}",
+          "rollingBackTo": "Rolling back to {{version}}",
+          "finalizingUpgrade": "Finalizing {{version}}",
+          "tag": {
+            "pendingFinalization": "Pending finalization",
+            "operationFailed": "Failed",
+            "operationInProgress": "In progress",
+            "operationPaused": "Paused"
+          },
+          "tooltip": {
+            "upgradeNotCompleteUntilFinalized": "Database upgrade is not complete until finalized."
+          }
+        },
         "upgradeModal": {
           "modalTitle": "Upgrade Database",
           "stepper": {
@@ -4206,7 +4222,7 @@
         "editNodesAndAvailabilityZones": "Edit AZ and Node Placement",
         "editMasterServerNodeAllocation": "Edit Master Server Node Allocation",
         "clusterPlacement": "Cluster Placement",
-        "primaryCluster":"Primary Cluster",
+        "primaryCluster": "Primary Cluster",
         "addReadReplica": "Add Read Replica",
         "readReplica": "Read Replica",
         "addReadReplicaHelpText": "Enhance read scalability and availability with Read Replicas.",

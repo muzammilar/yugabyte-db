@@ -7,18 +7,25 @@
  * http://github.com/YugaByte/yugabyte-db/blob/master/licenses/POLYFORM-FREE-TRIAL-LICENSE-1.0.0.txt
  */
 
-import { FC, useCallback, useEffect, useRef } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import moment from 'moment';
 import { useDispatch, useSelector } from 'react-redux';
-import { useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from 'react-query';
 import { useLocalStorage } from 'react-use';
 import { noop, values } from 'lodash';
 import { makeStyles } from '@material-ui/core';
-import { useQuery } from 'react-query';
+import { useTranslation } from 'react-i18next';
 
-import { api, runtimeConfigQueryKey } from '@app/redesign/helpers/api';
+import { TASK_SHORT_TIMEOUT } from '@app/components/tasks/constants';
+import { DbUpgradeManagementSidePanel } from '@app/redesign/features/universe/universe-actions/software-upgrade/upgrade-management/DbUpgradeManagementSidePanel';
+import {
+  api,
+  runtimeConfigQueryKey,
+  taskQueryKey,
+  universeQueryKey
+} from '@app/redesign/helpers/api';
 import { RuntimeConfigKey } from '@app/redesign/helpers/constants';
-import { getGetUniverseQueryKey } from '@app/v2/api/universe/universe';
+import { getGetUniverseQueryKey, getUniverse } from '@app/v2/api/universe/universe';
 import { TaskInProgressBanner } from './bannerComp/TaskInProgressBanner';
 import { TaskSuccessBanner } from './bannerComp/TaskSuccessBanner';
 import { TaskFailedBanner } from './bannerComp/TaskFailedBanner';
@@ -31,17 +38,36 @@ import {
   isSoftwareUpgradeFailed,
   useIsTaskNewUIEnabled
 } from '../TaskUtils';
-import { hideTaskInDrawer, showTaskInDrawer } from '../../../../actions/tasks';
+import {
+  hideTaskInDrawer,
+  patchTasksForCustomer,
+  showTaskInDrawer
+} from '../../../../actions/tasks';
 import { Task, TaskState } from '../dtos';
 import { DbUpgradeFinalizeTaskBanner } from './clusterBanner/DbUpgradeFinalizeTaskBanner';
 import { DbUpgradePrecheckTaskBanner } from './clusterBanner/DbUpgradePrecheckTaskBanner';
 import { DbUpgradeRollbackTaskBanner } from './clusterBanner/DbUpgradeRollbackTaskBanner';
 import { DbUpgradeTaskBanner } from './clusterBanner/DbUpgradeTaskBanner';
+import {
+  ClusterOperationBanner,
+  ClusterOperationBannerType
+} from './clusterBanner/ClusterOperationBanner';
+import { YBButton } from '@app/redesign/components';
+import {
+  getUniverseStatus,
+  SoftwareUpgradeState,
+  UniverseState
+} from '@app/components/universes/helpers/universeHelpers';
+import { PollingIntervalMs } from '@app/components/xcluster/constants';
 
 const useStyles = makeStyles((theme) => ({
   bannerContainer: {
     padding: theme.spacing(1, 2.5),
     backgroundColor: theme.palette.common.white
+  },
+  bannersContainer: {
+    display: 'flex',
+    flexDirection: 'column'
   }
 }));
 
@@ -50,20 +76,18 @@ type TaskDetailBannerProps = {
 };
 
 export const TaskDetailBanner: FC<TaskDetailBannerProps> = ({ universeUUID }) => {
-  //We use session storage to prevent the states getting reset to defaults incase of re-rendering.
+  const [isDbUpgradeManagementSidePanelOpen, setIsDbUpgradeManagementSidePanelOpen] =
+    useState(false);
   const dispatch = useDispatch();
   const classes = useStyles();
   const universeData = useSelector((data: any) => data.universe?.currentUniverse?.data);
+  const { t } = useTranslation('translation');
 
   // we use localStorage to hide the banner for the task, if it is already closed.
   const [acknowlegedTasks, setAcknowlegedTasks] = useLocalStorage<Record<string, string>>(
     'acknowlegedTasks',
     {}
   );
-
-  // instead of using react query , we use the data from the redux store.
-  // Old task components use redux store. We want to make sure we display the same progress across the ui.
-  const taskList = useSelector((data: any) => data.tasks);
 
   const universeRuntimeConfigsQuery = useQuery(
     runtimeConfigQueryKey.universeScope(universeUUID),
@@ -76,6 +100,34 @@ export const TaskDetailBanner: FC<TaskDetailBannerProps> = ({ universeUUID }) =>
       (c: { key: string; value: string }) => c.key === RuntimeConfigKey.ENABLE_CANARY_UPGRADE
     )?.value === 'true';
 
+  const isNewTaskDetailsUIEnabled = useIsTaskNewUIEnabled();
+
+  // This query is used to update the redux store with the latest task list.
+  const universeTasksQuery = useQuery(
+    taskQueryKey.universe(universeUUID),
+    () => api.fetchCustomerTasks(universeUUID),
+    {
+      enabled: !!universeUUID && isNewTaskDetailsUIEnabled && isCanaryUpgradeEnabled,
+      refetchInterval: TASK_SHORT_TIMEOUT,
+      onSuccess(data) {
+        dispatch(patchTasksForCustomer(universeUUID, data));
+      }
+    }
+  );
+
+  const universeDetailsQuery = useQuery(
+    universeQueryKey.detailsV2(universeUUID),
+    () => getUniverse(universeUUID),
+    {
+      enabled: !!universeUUID && isNewTaskDetailsUIEnabled && isCanaryUpgradeEnabled,
+      staleTime: PollingIntervalMs.UNIVERSE_STATE
+    }
+  );
+
+  // instead of using react query , we use the data from the redux store.
+  // Old task components use redux store. We want to make sure we display the same progress across the ui.
+  const taskList = useSelector((data: any) => data.tasks);
+
   const tasksInUniverse = taskList.customerTaskList;
 
   // always display the last task in the banner
@@ -85,7 +137,6 @@ export const TaskDetailBanner: FC<TaskDetailBannerProps> = ({ universeUUID }) =>
 
   const taskUUID = task?.id;
 
-  const isNewTaskDetailsUIEnabled = useIsTaskNewUIEnabled();
   const queryClient = useQueryClient();
   const lastInvalidatedForTaskIdRef = useRef<string | undefined>(undefined);
 
@@ -104,6 +155,7 @@ export const TaskDetailBanner: FC<TaskDetailBannerProps> = ({ universeUUID }) =>
 
     lastInvalidatedForTaskIdRef.current = task.id;
     void queryClient.invalidateQueries(getGetUniverseQueryKey(universeUUID));
+    void queryClient.invalidateQueries(universeQueryKey.detailsV2(universeUUID));
   }, [isNewTaskDetailsUIEnabled, universeUUID, task?.id, task?.status, queryClient]);
 
   const toggleTaskDetailsDrawer = (flag: boolean) => {
@@ -170,8 +222,6 @@ export const TaskDetailBanner: FC<TaskDetailBannerProps> = ({ universeUUID }) =>
     [taskUUID]
   );
 
-  if (universeUUID && acknowlegedTasks?.[universeUUID] === taskUUID) return null;
-
   if (!isNewTaskDetailsUIEnabled) return null;
 
   if (universeUUID && task?.targetUUID !== universeUUID) return null;
@@ -218,6 +268,66 @@ export const TaskDetailBanner: FC<TaskDetailBannerProps> = ({ universeUUID }) =>
         </div>
       );
     }
+
+    if (universeData?.universeDetails?.softwareUpgradeState === SoftwareUpgradeState.PRE_FINALIZE) {
+      const v2UniverseInfo = universeDetailsQuery.data?.info;
+      const universeStatus = getUniverseStatus(
+        v2UniverseInfo
+          ? {
+              universeDetails: {
+                updateInProgress: v2UniverseInfo.update_in_progress,
+                updateSucceeded: v2UniverseInfo.update_succeeded,
+                universePaused: v2UniverseInfo.universe_paused,
+                placementModificationTaskUuid: v2UniverseInfo.placement_modification_task_uuid,
+                errorString: ''
+              }
+            }
+          : undefined
+      );
+      return (
+        <div className={classes.bannersContainer}>
+          {universeUUID && acknowlegedTasks?.[universeUUID] === taskUUID ? null : bannerComp(task)}
+          {universeStatus.state === UniverseState.GOOD && (
+            <>
+              <div className={classes.bannerContainer}>
+                <ClusterOperationBanner
+                  type={ClusterOperationBannerType.PENDING_ACTION_YELLOW}
+                  title={t('universeActions.dbUpgrade.clusterBanner.finalizeOrRollBack.title')}
+                  actions={
+                    <YBButton
+                      variant="secondary"
+                      size="medium"
+                      data-testid="open-upgrade-monitor-button"
+                      onClick={() => {
+                        setIsDbUpgradeManagementSidePanelOpen(true);
+                      }}
+                    >
+                      {t('universeActions.dbUpgrade.clusterBanner.actions.openUpgradeMonitor')}
+                    </YBButton>
+                  }
+                  description={t(
+                    'universeActions.dbUpgrade.clusterBanner.finalizeOrRollBack.description'
+                  )}
+                />
+              </div>
+              {isDbUpgradeManagementSidePanelOpen && (
+                <DbUpgradeManagementSidePanel
+                  modalProps={{
+                    open: isDbUpgradeManagementSidePanelOpen,
+                    onClose: () => setIsDbUpgradeManagementSidePanelOpen(false)
+                  }}
+                  universeUuid={universeUUID}
+                />
+              )}
+            </>
+          )}
+        </div>
+      );
+    }
+  }
+
+  if (universeUUID && acknowlegedTasks?.[universeUUID] === taskUUID) {
+    return null;
   }
 
   return <>{bannerComp(task)}</>;
