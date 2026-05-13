@@ -40,8 +40,11 @@
 #include <regex>
 #include <sstream>
 #include <unordered_set>
+#include <vector>
 
 #include <boost/date_time/posix_time/time_formatters.hpp>
+
+#include "yb/gutil/strings/join.h"
 
 #include "yb/common/common_consensus_util.h"
 #include "yb/common/xcluster_util.h"
@@ -516,6 +519,34 @@ struct LocalTserverInfo {
   }
 };
 
+std::vector<std::string> LoadBalancerServerBlacklistReasons(
+    const std::shared_ptr<TSDescriptor>& ts_desc,
+    const BlacklistSet& persisted_server_blacklist) {
+  std::vector<std::string> reasons;
+  if (ts_desc->IsBlacklisted(persisted_server_blacklist)) {
+    reasons.push_back("config");
+  }
+  if (ts_desc->has_faulty_drive()) {
+    reasons.push_back("faulty_drive");
+  }
+  return reasons;
+}
+
+using EffectiveBlacklistEntry = std::pair<std::string, std::vector<std::string>>;
+
+std::vector<EffectiveBlacklistEntry> EffectiveLoadBalancerServerBlacklist(
+    const std::vector<std::shared_ptr<TSDescriptor>>& descs,
+    const BlacklistSet& persisted_server_blacklist) {
+  std::vector<EffectiveBlacklistEntry> result;
+  for (const auto& desc : descs) {
+    auto reasons = LoadBalancerServerBlacklistReasons(desc, persisted_server_blacklist);
+    if (!reasons.empty()) {
+      result.emplace_back(desc->permanent_uuid(), std::move(reasons));
+    }
+  }
+  return result;
+}
+
 }  // anonymous namespace
 
 MasterPathHandlers::UniverseTabletCounts MasterPathHandlers::CalculateUniverseTabletCounts(
@@ -602,7 +633,7 @@ void MasterPathHandlers::TServerDisplay(
 
     if (desc->IsBlacklisted(blacklist)) {
       tserver_info.color = tserver_info.color == "Green" ? kYBOrange : tserver_info.color;
-      tserver_info.status += "</br>Blacklisted";
+      tserver_info.status += "</br>Blacklisted (config)";
     }
     if (desc->IsBlacklisted(leader_blacklist)) {
       tserver_info.color = tserver_info.color == "Green" ? kYBOrange : tserver_info.color;
@@ -610,7 +641,7 @@ void MasterPathHandlers::TServerDisplay(
     }
     if (desc->has_faulty_drive()) {
       tserver_info.color = tserver_info.color == "Green" ? kYBOrange : tserver_info.color;
-      tserver_info.status += "</br>Faulty Drive";
+      tserver_info.status += "</br>Blacklisted (faulty drive)";
     }
 
     html_row.AddColumn(
@@ -3194,7 +3225,29 @@ void MasterPathHandlers::HandleGetClusterConfig(
     return;
   }
 
-  *output << "<div class=\"alert alert-success\">Successfully got cluster config!</div>"
+  *output << "<div class=\"alert alert-success\">Successfully got cluster config!</div>";
+
+  *output << "<h2>Effective load balancer server blacklist</h2>\n";
+  {
+    auto persisted_bl = master_->catalog_manager()->BlacklistSetFromPB(false);
+    const BlacklistSet bl = persisted_bl.ok() ? *persisted_bl : BlacklistSet();
+    auto effective_blacklist =
+        EffectiveLoadBalancerServerBlacklist(master_->ts_manager()->GetAllDescriptors(), bl);
+    if (!effective_blacklist.empty()) {
+      *output << "<table class=\"table\"><tr><th>Tablet server UUID</th><th>Blacklist reasons</th>"
+                 "</tr>\n";
+      for (const auto& [uuid, reasons] : effective_blacklist) {
+        *output << "<tr><td>" << EscapeForHtmlToString(uuid) << "</td><td>"
+                << EscapeForHtmlToString(JoinStrings(reasons, ", ")) << "</td></tr>\n";
+      }
+      *output << "</table>\n";
+    } else {
+      *output << "<p><i>None: no tablet servers are currently treated as server-blacklisted by "
+                 "the load balancer.</i></p>\n";
+    }
+  }
+
+  *output << "<h2>Persisted cluster configuration (sys catalog)</h2>\n"
           << "<pre class=\"prettyprint\">"
           << EscapeForHtmlToString(cluster_config_result->DebugString()) << "</pre>";
 }
