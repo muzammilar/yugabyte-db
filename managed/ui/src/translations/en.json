@@ -4198,10 +4198,11 @@
       },
       "placement": {
         "actions": "Actions",
-        "editResilienceAndRegions": "Edit Resilience and Regions",
-        "editNodesAndAvailabilityZones": "Edit Nodes and Availability Zones",
+        "editResilienceAndRegions": "Edit Regions",
+        "editNodesAndAvailabilityZones": "Edit AZ and Node Placement",
         "editMasterServerNodeAllocation": "Edit Master Server Node Allocation",
         "clusterPlacement": "Cluster Placement",
+        "primaryCluster":"Primary Cluster",
         "addReadReplica": "Add Read Replica",
         "readReplica": "Read Replica",
         "addReadReplicaHelpText": "Enhance read scalability and availability with Read Replicas.",
@@ -4259,7 +4260,32 @@
         "masterServerInstance": "Master Server Instance",
         "editHardwareModal": {
           "title": "Cluster Instance",
-          "submitLabel": "Review Changes"
+          "submitLabel": "Review Changes",
+          "noHardwareChanges": "Nothing to update - no hardware fields changed.",
+          "totalNodes": "Total Nodes",
+          "totalTServerNodes": "Total T-Server Nodes",
+          "totalMasterServerNodes": "Total Master Server Nodes"
+        },
+        "unableToApplyChanges": "Unable to apply hardware changes.",
+        "reviewChangesModal": {
+          "title": "Review Changes",
+          "summary": "Summary of instance configuration changes:",
+          "noChangedFieldsSummary": "No field differences to display for this review.",
+          "storageClass": "Storage class :",
+          "mountPoints": "Mount points :",
+          "current": "Current",
+          "new": "New",
+          "instanceType": "Instance Type :",
+          "volumeAndNode": "Volume / Node :",
+          "universeUpdateOptions": "Universe Update Options",
+          "rollingRestart": "Rolling restart the current nodes.",
+          "fasterAndRecommended": "Faster and Recommended",
+          "rollingRestartDescription": "No data migration is required. The universe will remain online and available throughout.",
+          "delayBetweenNodes": "Delay between nodes:",
+          "seconds": "seconds",
+          "migrateNodes": "Migrate to a new set of nodes.",
+          "migrateNodesDescription": "Migrate all data to a new set of nodes with new IP addresses. The universe will remain online and available throughout.",
+          "confirmAndApply": "Confirm and Apply"
         }
       },
       "security": {
@@ -4297,7 +4323,7 @@
       },
       "masterServerNodeAllocationModal": {
         "title": "Master Server Node Allocation",
-        "editMasterServer": "Edit Master Server Instance  (Optional)",
+        "editMasterServer": "Edit Master Server Instance",
         "subText": "You can change master server instance settings at any time by going to:",
         "settingsAndHardware": "Settings > Hardware"
       }

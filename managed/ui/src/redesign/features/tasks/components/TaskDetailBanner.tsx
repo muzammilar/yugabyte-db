@@ -7,9 +7,10 @@
  * http://github.com/YugaByte/yugabyte-db/blob/master/licenses/POLYFORM-FREE-TRIAL-LICENSE-1.0.0.txt
  */
 
-import { FC, useCallback } from 'react';
+import { FC, useCallback, useEffect, useRef } from 'react';
 import moment from 'moment';
 import { useDispatch, useSelector } from 'react-redux';
+import { useQueryClient } from 'react-query';
 import { useLocalStorage } from 'react-use';
 import { noop, values } from 'lodash';
 import { makeStyles } from '@material-ui/core';
@@ -17,6 +18,7 @@ import { useQuery } from 'react-query';
 
 import { api, runtimeConfigQueryKey } from '@app/redesign/helpers/api';
 import { RuntimeConfigKey } from '@app/redesign/helpers/constants';
+import { getGetUniverseQueryKey } from '@app/v2/api/universe/universe';
 import { TaskInProgressBanner } from './bannerComp/TaskInProgressBanner';
 import { TaskSuccessBanner } from './bannerComp/TaskSuccessBanner';
 import { TaskFailedBanner } from './bannerComp/TaskFailedBanner';
@@ -83,6 +85,27 @@ export const TaskDetailBanner: FC<TaskDetailBannerProps> = ({ universeUUID }) =>
 
   const taskUUID = task?.id;
 
+  const isNewTaskDetailsUIEnabled = useIsTaskNewUIEnabled();
+  const queryClient = useQueryClient();
+  const lastInvalidatedForTaskIdRef = useRef<string | undefined>(undefined);
+
+  // Refetch v2 universe (useGetUniverse) when the banner's newest task for this universe reaches a
+  // terminal state. Semantics: follows the latest customerTaskList row for universeUUID, not a specific edit.
+  useEffect(() => {
+    if (!isNewTaskDetailsUIEnabled || !universeUUID || !task?.id) return;
+
+    const isTerminal =
+      task.status === TaskState.SUCCESS ||
+      task.status === TaskState.FAILURE ||
+      task.status === TaskState.ABORTED;
+
+    if (!isTerminal) return;
+    if (lastInvalidatedForTaskIdRef.current === task.id) return;
+
+    lastInvalidatedForTaskIdRef.current = task.id;
+    void queryClient.invalidateQueries(getGetUniverseQueryKey(universeUUID));
+  }, [isNewTaskDetailsUIEnabled, universeUUID, task?.id, task?.status, queryClient]);
+
   const toggleTaskDetailsDrawer = (flag: boolean) => {
     if (flag) {
       dispatch(showTaskInDrawer(taskUUID));
@@ -147,7 +170,6 @@ export const TaskDetailBanner: FC<TaskDetailBannerProps> = ({ universeUUID }) =>
     [taskUUID]
   );
 
-  const isNewTaskDetailsUIEnabled = useIsTaskNewUIEnabled();
   if (universeUUID && acknowlegedTasks?.[universeUUID] === taskUUID) return null;
 
   if (!isNewTaskDetailsUIEnabled) return null;
