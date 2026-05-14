@@ -1370,6 +1370,37 @@ Default: `4 * 3600` (4 hours)
 
 The time interval, in seconds, to retain history/older versions of the system catalog.
 
+### LISTEN/NOTIFY flags
+
+{{<tags/feature/ea idea="1901">}}Available in v2025.2.3 and later. To learn about LISTEN/NOTIFY, see [LISTEN, NOTIFY, and UNLISTEN](../../../api/ysql/the-sql-language/statements/cmd_listen_notify/).
+
+##### --ysql_yb_enable_listen_notify
+
+{{% tags/wrap %}}
+{{<tags/feature/t-server>}}
+Default: `false`
+{{% /tags/wrap %}}
+
+Enables YSQL LISTEN/NOTIFY.
+
+##### --ysql_yb_notifications_poll_sleep_duration_nonempty_ms
+
+{{% tags/wrap %}}
+
+Default: `1`
+{{% /tags/wrap %}}
+
+Wait time in milliseconds before the notifications poller polls again when the previous poll returned data.
+
+##### --ysql_yb_notifications_poll_sleep_duration_empty_ms
+
+{{% tags/wrap %}}
+
+Default: `100`
+{{% /tags/wrap %}}
+
+Wait time in milliseconds before the notifications poller polls again when the previous poll returned no data.
+
 ### File expiration based on TTL flags
 
 ##### --tablet_enable_ttl_file_filter
