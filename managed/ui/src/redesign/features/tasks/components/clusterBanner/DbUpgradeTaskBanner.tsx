@@ -16,8 +16,6 @@ import { assertUnreachableCase } from '@app/utils/errorHandlingUtils';
 import { getIsDbUpgradeTask } from '../../TaskUtils';
 import { Task, TaskState } from '../../dtos';
 import { ClusterOperationBanner, ClusterOperationBannerType } from './ClusterOperationBanner';
-
-import ConnectIcon from '@app/redesign/assets/approved/connect.svg';
 interface DbUpgradeTaskBannerProps {
   task: Task;
   universeUuid: string;
@@ -124,27 +122,7 @@ export const DbUpgradeTaskBanner = ({ task, universeUuid }: DbUpgradeTaskBannerP
           <ClusterOperationBanner
             type={ClusterOperationBannerType.PENDING_ACTION_YELLOW}
             title={t('finalizeOrRollBack.title')}
-            actions={
-              <>
-                <YBButton
-                  variant="secondary"
-                  size="medium"
-                  data-testid="roll-back-upgrade-button-finalize"
-                  onClick={() => setIsDbUpgradeRollBackModalOpen(true)}
-                >
-                  {t('finalizeOrRollBack.rollBack')}
-                </YBButton>
-                <YBButton
-                  variant="primary"
-                  size="medium"
-                  startIcon={<ConnectIcon width={24} height={24} />}
-                  data-testid="finalize-upgrade-now-button"
-                  onClick={() => setIsDbUpgradeFinalizeModalOpen(true)}
-                >
-                  {t('finalizeOrRollBack.finalizeUpgradeNow')}
-                </YBButton>
-              </>
-            }
+            actions={openDbUpgradeManagementSidePanelButton}
             description={t('finalizeOrRollBack.description')}
           />
         );
