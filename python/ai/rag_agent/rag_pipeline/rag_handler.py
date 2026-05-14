@@ -40,6 +40,7 @@ class RagPipelineHandler:
         metadata=None,
         chunk_kwargs=None,
         embedding_model_params=None,
+        ai_provider=None,
         tenant_id=None
     ):
         """
@@ -85,7 +86,8 @@ class RagPipelineHandler:
 
         embedder = EmbeddingsGenerator(
             embedding_model=embedding_model,
-            embedding_model_params=embedding_model_params
+            embedding_model_params=embedding_model_params,
+            ai_provider=ai_provider
         )
         # 1. Process file and Generate embeddings
         embedding_iterator = embedder.generate_embeddings(
@@ -107,7 +109,11 @@ class RagPipelineHandler:
         )
         return True
 
-    @meko_observe(name="Start Processing / RagPipelineHandler", as_type="agent", capture_input=False)
+    @meko_observe(
+        name="Start Processing / RagPipelineHandler",
+        as_type="agent",
+        capture_input=False,
+    )
     def start_processing(
         self,
         source_id,
@@ -118,6 +124,7 @@ class RagPipelineHandler:
         metadata=None,
         chunk_kwargs=None,
         embedding_model_params=None,
+        ai_provider=None,
         tenant_id=None
     ):
         """
@@ -140,6 +147,7 @@ class RagPipelineHandler:
                 metadata=metadata,
                 chunk_kwargs=chunk_kwargs,
                 embedding_model_params=embedding_model_params,
+                ai_provider=ai_provider,
                 tenant_id=tenant_id
             )
             self.logger.info(f"Processing of document: {document_uri} completed")

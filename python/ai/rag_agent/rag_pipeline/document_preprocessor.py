@@ -7,10 +7,12 @@ from models.work_queue_task import WorkQueueTask
 from rag_pipeline.rag_handler import RagPipelineHandler
 from db.source_document_tracking import SourceDocumentTracking
 from uuid import UUID
-from typing import Dict, Any,Optional, Tuple
+from typing import Dict, Any, Optional, Tuple
 from langfuse import Langfuse
 from langfuse._client.get_client import _set_current_public_key
 from observability import meko_observe
+
+
 class DocumentPreprocessor(TaskProcessor):
     """
     Processor for DOCUMENT_PREPROCESSING tasks.
@@ -40,10 +42,17 @@ class DocumentPreprocessor(TaskProcessor):
                 return False
 
         return True
+
     @meko_observe(name="Retrieve Embedding Parameters / DocumentPreprocessor", as_type="retriever")
-    def _retrieve_embedding_parameters(self, index_id: UUID) -> Dict[str, Any]:
+    def _retrieve_embedding_parameters(
+        self, index_id: UUID
+    ) -> Tuple[Optional[str], Dict[str, Any]]:
         """
-        Retrieve the embedding parameters for the source.
+        Retrieve the AI provider and embedding model parameters for the index.
+
+        Returns:
+            Tuple of (ai_provider, embedding_model_params). Returns
+            ``(None, {})`` when the row is missing or fetching failed.
         """
 
         connection = None
@@ -51,30 +60,30 @@ class DocumentPreprocessor(TaskProcessor):
             connection = self.connection_pool.get_connection()
             cursor = connection.cursor()
             query = """
-                SELECT embedding_model_params
+                SELECT ai_provider, embedding_model_params
                 FROM dist_rag.vector_indexes
                 WHERE id = %s
             """
             cursor.execute(query, (str(index_id),))
             result = cursor.fetchone()
             if result:
-                return result[0]  # embedding_model_params is the first column
+                return result[0], result[1]
             else:
                 self.logger.error(f"No vector_indexes entry found for index_id: {index_id}")
-                return {}
+                return None, {}
 
         except Exception as e:
             connection.rollback()
             self.logger.error(
-                f"Error fetching embedding_model_params for index_id {index_id}: {str(e)}"
+                f"Error fetching ai_provider/embedding_model_params for "
+                f"index_id {index_id}: {str(e)}"
             )
-            return {}
+            return None, {}
         finally:
             if cursor:
                 cursor.close()
             if connection:
                 self.connection_pool.return_connection(connection)
-        return None
 
     @meko_observe(name="Retrieve Chunking Parameters / DocumentPreprocessor", as_type="retriever")
     def _retrieve_chunking_parameters(self, index_id: UUID, source_id: UUID) -> Dict[str, Any]:
@@ -190,8 +199,8 @@ class DocumentPreprocessor(TaskProcessor):
                 )
                 row = cursor.fetchone()
                 if row:
-                    public_key=row[0]
-                    secret_key=row[1]
+                    public_key = row[0]
+                    secret_key = row[1]
                     return public_key, secret_key
                 else:
                     self.logger.warning(f"No Langfuse keys found for datapack_id={datapack_id}")
@@ -204,6 +213,7 @@ class DocumentPreprocessor(TaskProcessor):
             )
 
         return None
+
     def process(self, task: WorkQueueTask) -> Dict[str, Any]:
         """
         Process the task.
@@ -234,7 +244,8 @@ class DocumentPreprocessor(TaskProcessor):
                     )
                 except Exception as e:
                     self.logger.warning(
-                        f"Langfuse initialization failed for task {task.id}; continuing without tracing: {str(e)}"
+                        f"Langfuse initialization failed for task {task.id}; "
+                        f"continuing without tracing: {str(e)}"
                     )
                     tracing_context = nullcontext()
                     observation_context = nullcontext()
@@ -272,24 +283,26 @@ class DocumentPreprocessor(TaskProcessor):
                             f"document_uri: {document_uri}"
                         )
 
-                    # Retrieve embedding parameters
+                    # Retrieve required parameters
                     try:
-                        embedding_model_params = self._retrieve_embedding_parameters(
-                            index_id=index_id
+                        ai_provider, embedding_model_params = (
+                            self._retrieve_embedding_parameters(index_id=index_id)
                         )
                         if not embedding_model_params:
                             raise ValueError(
                                 f"Failed to retrieve embedding parameters for index_id: {index_id}"
                             )
+                        if not ai_provider:
+                            raise ValueError(
+                                f"Failed to retrieve ai_provider for index_id: {index_id}"
+                            )
                     except Exception as e:
                         self.logger.error(f"Error retrieving embedding parameters: {str(e)}")
                         raise
 
-                    # Retrieve chunking parameters
                     try:
                         chunking_params = self._retrieve_chunking_parameters(
-                            index_id=index_id,
-                            source_id=source_id
+                            index_id=index_id, source_id=source_id
                         )
                         if not chunking_params:
                             raise ValueError(
@@ -300,7 +313,6 @@ class DocumentPreprocessor(TaskProcessor):
                         self.logger.error(f"Error retrieving chunking parameters: {str(e)}")
                         raise
 
-                    # Retrieve source metadata
                     try:
                         source_metadata = self._retrieve_source_metadata(source_id=source_id)
                         if source_metadata is None:
@@ -332,9 +344,14 @@ class DocumentPreprocessor(TaskProcessor):
 
                     # Retrieve RAG index name and schema
                     try:
-                        rag_index_name, rag_schema_name = self._retrieve_rag_index_name(index_id=index_id)
+                        rag_index_name, rag_schema_name = (
+                            self._retrieve_rag_index_name(index_id=index_id)
+                        )
                         if not rag_index_name:
-                            raise ValueError(f"Failed to retrieve RAG index name for index_id: {index_id}")
+                            raise ValueError(
+                                f"Failed to retrieve RAG index name for "
+                                f"index_id: {index_id}"
+                            )
                     except Exception as e:
                         self.logger.error(f"Error retrieving RAG index name: {str(e)}")
                         raise
@@ -354,6 +371,7 @@ class DocumentPreprocessor(TaskProcessor):
                             metadata=source_metadata,
                             chunk_kwargs=chunking_params,
                             embedding_model_params=embedding_model_params,
+                            ai_provider=ai_provider,
                             tenant_id=tenant_id
                         )
                         self.logger.info(f"Task {task.id} processed successfully")

@@ -6,6 +6,7 @@ langchain-core
 langchain-text-splitters
 langchain-openai
 langchain-community
+langchain-aws
 
 # HTML processing
 protego  # robots.txt parser (BSD-3, by Scrapy team)
