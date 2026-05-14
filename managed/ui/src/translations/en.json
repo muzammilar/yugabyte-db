@@ -378,8 +378,10 @@
             "upgrade": "Upgrade"
           },
           "toast": {
-            "dbUpgradeFailed": "Database upgrade request failed",
-            "dbUpgradePrecheckFailed": "Database pre-check request failed"
+            "dbUpgradeFailedLabel": "Database upgrade request failed",
+            "dbUpgradePrecheckFailedLabel": "Database pre-check request failed",
+            "dbUpgradePrecheckSuccess": "Database upgrade pre-check passed.",
+            "dbUpgradeSuccess": "Database upgrade completed."
           }
         },
         "rollbackModal": {
@@ -398,6 +400,7 @@
           "upgradedAzsLabel": "Upgraded AZs:",
           "submitLabel": "Proceed to Roll Back",
           "toast": {
+            "rollbackSuccess": "Database upgrade rollback completed.",
             "rollbackFailedLabel": "Rollback request failed"
           }
         },
@@ -408,6 +411,7 @@
           "evaluationLink": "View recommended evaluation steps",
           "submitLabel": "Proceed to finalize the upgrade",
           "toast": {
+            "finalizeUpgradeSuccess": "Database upgrade finalized.",
             "finalizeUpgradeFailedLabel": "Finalize DB upgrade request failed"
           }
         },
