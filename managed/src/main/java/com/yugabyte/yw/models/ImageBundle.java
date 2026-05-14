@@ -203,10 +203,10 @@ public class ImageBundle extends Model {
             return bundle.getMetadata() == null
                 || bundle.getMetadata().getType() == null
                 || !bundle
-                .getMetadata()
-                .getType()
-                .toString()
-                .equals(ImageBundleType.YBA_ACTIVE.toString());
+                    .getMetadata()
+                    .getType()
+                    .toString()
+                    .equals(ImageBundleType.YBA_ACTIVE.toString());
           });
     }
     return bundles;
