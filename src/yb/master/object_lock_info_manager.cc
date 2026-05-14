@@ -119,6 +119,7 @@ Status ValidateLockRequest(
 }
 
 constexpr auto kTserverRpcsTimeoutDefaultSecs = 60s;
+constexpr auto kTserverRpcsBufferForTimeoutDetection = 5s;
 
 template <typename T>
   requires std::disjunction_v<
@@ -437,6 +438,12 @@ class UpdateTServer : public RetrySpecificTSRpcTask {
   Req request() const;
 
   bool RetryTaskAfterRPCFailure(const Status& status) override;
+
+  MonoTime ComputeDeadline() const override {
+    auto computed_deadline = RetrySpecificTSRpcTask::ComputeDeadline();
+    computed_deadline.AddDelta(kTserverRpcsBufferForTimeoutDetection);
+    return computed_deadline;
+  }
 
  private:
   TabletId tablet_id() const override { return TabletId(); }

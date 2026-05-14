@@ -218,6 +218,11 @@ DEFINE_RUNTIME_uint64(refresh_waiter_timeout_ms, 30000,
 TAG_FLAG(refresh_waiter_timeout_ms, advanced);
 TAG_FLAG(refresh_waiter_timeout_ms, hidden);
 
+// TODO: Cannot be runtime state due to cdc_client...
+DEFINE_NON_RUNTIME_int32(master_ts_rpc_timeout_ms, 30 * 1000,  // 30 sec
+    "Timeout used for the Master->TS async rpc calls.");
+TAG_FLAG(master_ts_rpc_timeout_ms, advanced);
+
 #ifdef NDEBUG
 constexpr bool kEnableObjectLockingForTableLocks = kEnableDdlTransactionBlocks;
 #else
@@ -251,7 +256,11 @@ DEFINE_validator(enable_object_locking_for_table_locks,
     FLAG_REQUIRES_NONZERO_FLAG_VALIDATOR(refresh_waiter_timeout_ms),
     FLAG_REQUIRED_BY_FLAG_VALIDATOR(ysql_enable_concurrent_ddl),
     FLAG_DELAYED_COND_VALIDATOR(
-      !_value || !FLAGS_enable_object_lock_fastpath || FLAGS_pg_client_use_shared_memory,
+        !_value || ::yb::flags_internal::compare_greater_equal(
+            FLAGS_master_ts_rpc_timeout_ms, FLAGS_refresh_waiter_timeout_ms),
+        "Requires master_ts_rpc_timeout_ms to be >= refresh_waiter_timeout_ms"),
+    FLAG_DELAYED_COND_VALIDATOR(
+        !_value || !FLAGS_enable_object_lock_fastpath || FLAGS_pg_client_use_shared_memory,
       "enable_object_lock_fastpath requires pg_client_use_shared_memory to be true"));
 
 DEFINE_validator(pg_client_use_shared_memory,
@@ -272,7 +281,17 @@ DEFINE_validator(ysql_yb_ddl_transaction_block_enabled,
         "ysql_yb_ddl_rollback_enabled must be enabled"),
     FLAG_REQUIRED_BY_FLAG_VALIDATOR(enable_object_locking_for_table_locks));
 DEFINE_validator(refresh_waiter_timeout_ms,
-    FLAG_REQUIRED_NONZERO_BY_FLAG_VALIDATOR(enable_object_locking_for_table_locks));
+    FLAG_REQUIRED_NONZERO_BY_FLAG_VALIDATOR(enable_object_locking_for_table_locks),
+    FLAG_DELAYED_COND_VALIDATOR(
+        !FLAGS_enable_object_locking_for_table_locks ||
+        ::yb::flags_internal::compare_less_equal(_value, FLAGS_master_ts_rpc_timeout_ms),
+        "Must be <= master_ts_rpc_timeout_ms when enable_object_locking_for_table_locks is true"));
+
+DEFINE_validator(master_ts_rpc_timeout_ms,
+    FLAG_DELAYED_COND_VALIDATOR(
+        !FLAGS_enable_object_locking_for_table_locks ||
+            ::yb::flags_internal::compare_greater_equal(_value, FLAGS_refresh_waiter_timeout_ms),
+        "Must be >= refresh_waiter_timeout_ms when enable_object_locking_for_table_locks is true"));
 
 DEFINE_RUNTIME_PG_PREVIEW_FLAG(bool, yb_cdcsdk_stream_tables_without_primary_key, false,
     "When set to true, allows streaming of tables without primary keys for CDCSDK logical "

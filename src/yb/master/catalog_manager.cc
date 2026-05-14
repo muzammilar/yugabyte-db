@@ -231,11 +231,6 @@
 using namespace std::literals;
 using namespace yb::size_literals;
 
-// TODO: Cannot be runtime state due to cdc_client...
-DEFINE_NON_RUNTIME_int32(master_ts_rpc_timeout_ms, 30 * 1000,  // 30 sec
-    "Timeout used for the Master->TS async rpc calls.");
-TAG_FLAG(master_ts_rpc_timeout_ms, advanced);
-
 // The time is temporarly set to 600 sec to avoid hitting the tablet replacement code inherited from
 // Kudu. Removing tablet replacement code will be fixed in GH-6006
 DEFINE_RUNTIME_int32(
