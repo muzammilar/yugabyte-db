@@ -259,7 +259,7 @@ export const mapCreateUniversePayload = (
               name: 'default',
               default_partition: true,
               replication_factor: effectiveRf,
-              // tablespace_name: 'default',
+              tablespace_name: 'default',
               placement: {
                 cloud_list: primaryCloudList
               }
